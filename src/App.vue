@@ -255,10 +255,10 @@ const contentTitleDy = computed(() => 0)
             <!-- Scroll-Progress-Bar -->
               <ScrollProgress
                 anchor="#article-subtitle"
-                height="3px"
+                height="2.5px"
                 color="#111"
                 track="rgba(2,25,72,.15)"
-                top="0"
+                top="7px"
               />
 
               <div class="author"> Anja Ruoss</div>
