@@ -110,12 +110,6 @@ const barStyle = computed(() => ({
   top: var(--sp-top);
   z-index: 1000;
   display: none;
-
-/* weisser Balken */
-  background: #fff;
-  height: 7px;                /* Gesamthöhe = dein „Streifen“ */
-  display: flex;
-  align-items: center;
 }
 .sp-fixed.shown { display: block; }
 

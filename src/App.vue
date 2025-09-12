@@ -258,7 +258,7 @@ const contentTitleDy = computed(() => 0)
                 height="2.5px"
                 color="#111"
                 track="rgba(2,25,72,.15)"
-                top="7px"
+                top="0"
               />
 
               <div class="author"> Anja Ruoss</div>
