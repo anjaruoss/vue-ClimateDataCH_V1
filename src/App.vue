@@ -42,7 +42,7 @@ function elementCentered(el){
   const vpH = window.innerHeight
   const centerY = vpH / 2
   const elCenterY = r.top + r.height / 2
-  const tol = Math.max(32, Math.round(vpH * 0.25)) // deine Toleranz
+  const tol = Math.max(32, Math.round(vpH * 0.25))
   const intersects = r.bottom > 0 && r.top < vpH
   const dist = Math.abs(elCenterY - centerY)
   return { centered: intersects && dist <= tol, dist }
@@ -54,7 +54,6 @@ function getActiveTarget(){
   const cZermatt = elementCentered(zermattEl.value)
   const cBiere  = elementCentered(biereEl.value)
 
-  // Wenn keiner innerhalb Toleranz: kein aktives Target
   const candidates = [
     { key:"map",    ...cMap },
     { key:"zermatt", ...cZermatt},
@@ -131,7 +130,7 @@ function handleWheel(e){
   if (!targetKey){
     scrollCapture = false
     resetWheelAccum()
-    return // Seite scrollt normal
+    return
   }
   scrollCapture = true
 
@@ -139,13 +138,11 @@ function handleWheel(e){
   if (!scr) return
 
   const cur = scr.get()
-  // Am Rand: Seite übernehmen lassen
   if ((dPix > 0 && cur === scr.max) || (dPix < 0 && cur === scr.min)){
     resetWheelAccum()
     return
   }
 
-  // Jahressteuerung Wheel
   e.preventDefault()
   wheelAccum += dPix
   if (Math.abs(wheelAccum) >= WHEEL_PX_PER_YEAR){
@@ -161,7 +158,7 @@ function handleTouchStart(e){ if (e.touches.length === 1) lastTouchY = e.touches
 function handleTouchMove(e){
   if (lastTouchY == null) return
   const touchY = e.touches[0].clientY
-  const d = lastTouchY - touchY // >0 = nach oben
+  const d = lastTouchY - touchY
   const targetKey = getActiveTarget()
 
   if (!targetKey){
@@ -176,14 +173,12 @@ function handleTouchMove(e){
   if (!scr) return
   const cur = scr.get()
 
-  // Am Rand: Seite übernehmen lassen
   if ((d > 0 && cur === scr.max) || (d < 0 && cur === scr.min)){
     touchAccum = 0
     lastTouchY = touchY
     return
   }
 
-  // Jahressteuerung Touch
   e.preventDefault()
   touchAccum += d
   while (Math.abs(touchAccum) >= TOUCH_PX_PER_YEAR){
@@ -251,74 +246,60 @@ const contentTitleDy = computed(() => 0)
             <div class="content-intro" :style="{ opacity: contentTitleA, transform: `translateY(${contentTitleDy}px)` }"></div>
             <article class="text-block">
               <h1 class="title">So stark hat sich das Klima in Ihrer Gemeinde verändert</h1>
-              <h2 class="subtitel" style="margin-top: 8px; font-weight: normal; font-size: clamp(14px, 2.5vw, 20px);">
+              <h2 class="subtitel">
                 Die Schweiz gehört zu den Hotspots des Klimawandels. 
                 Eine Datenanalyse zeigt, wie sich die Temperaturen seit den 1960er-Jahren verändert haben — auch vor Ihrer Haustüre.
               </h2>
-              <div class="author">Anja Ruoss</div>
-                <p>Klimawandel ist kein fernes Phänomen — ob in den Städten, wo Hitzeperioden spürbar zunehmen, oder in den Bergen, wo Lawinen, Murgänge und Steinschläge drohen: Die Auswirkungen sind vielfältig und direkt.
-              </p> 
-                <p>Seit Beginn der Industrialisierung hat sich die Erde im Schnitt um rund 1,3 Grad erwärmt. In der Schweiz liegt dieser Wert sogar bei 2,9 Grad. Damit gehört das Land zu den Hotspots des Klimawandels. Gründe dafür sind unter anderem die geografische Lage im Herzen Europas und die Sensibilität der Alpenregion.
-              </p> 
-                <p>Die folgende Karte zeigt, wie sich die durchschnittlichen Jahrestemperaturen von 1971 bis 2018 in allen Schweizer Gemeinden entwickelt haben.
-              </p>
+              <div class="author"> Anja Ruoss</div>
+
+              <p>Klimawandel ist kein fernes Phänomen — ob in den Städten, wo Hitzeperioden spürbar zunehmen, oder in den Bergen, wo Lawinen, Murgänge und Steinschläge drohen: Die Auswirkungen sind vielfältig und direkt.</p>
+              <p>Seit Beginn der Industrialisierung hat sich die Erde im Schnitt um rund 1,3 Grad erwärmt. In der Schweiz liegt dieser Wert sogar bei 2,9 Grad. Damit gehört das Land zu den Hotspots des Klimawandels. Gründe dafür sind unter anderem die geografische Lage im Herzen Europas und die Sensibilität der Alpenregion.</p>
+              <p>Die folgende Karte zeigt, wie sich die durchschnittlichen Jahrestemperaturen von 1971 bis 2018 in allen Schweizer Gemeinden entwickelt haben.</p>
 
               <!-- ChMapSvg mit Scroll -->
-              <div
-                class="svg-frame"
-                ref="mapEl"
-                tabindex="0"
-                aria-label="Karten-Zeitnavigation"
-                style="outline:none; position:relative;"
-              >
+              <div class="svg-frame" ref="mapEl" tabindex="0" aria-label="Karten-Zeitnavigation" style="outline:none; position:relative;">
                 <ChMapSvg :year="year" :data-dir="dataDir" />
-                  <div class="bildlegende"> Die Karte zeigt die Entwicklung der mittleren Jahrestemperaturen in der Schweiz von 1971 bis 2018. Grundlage sind modellbasierte Schätzungen aus dem europäischen Klimadatenprojekt Copernicus in Zusammenarbeit mit dem Europäischen Zentrum für mittelfristige Wettervorhersage (ECMWF). 
-                    <a href="https://cds.climate.copernicus.eu/datasets/reanalysis-uerra-europe-single-levels?tab=overview" 
-                    target="_blank" rel="noopener" style="font-style: italic;" >Quelle: UERRA-Regionalreanalyse</a> 
-                  </div>
+                <div class="bildlegende">
+                  Die Karte zeigt die Entwicklung der mittleren Jahrestemperaturen in der Schweiz von 1971 bis 2018. Grundlage sind modellbasierte Schätzungen aus dem europäischen Klimadatenprojekt Copernicus in Zusammenarbeit mit dem Europäischen Zentrum für mittelfristige Wettervorhersage (ECMWF).
+                  <a href="https://cds.climate.copernicus.eu/datasets/reanalysis-uerra-europe-single-levels?tab=overview" target="_blank" rel="noopener" style="font-style: italic;">Quelle: UERRA-Regionalreanalyse</a>
+                </div>
               </div>
 
-              <p> Laut einer europaweiten Analyse des <a href="https://www.europeandatajournalism.eu/" target="_blank" rel="noopener">European Data Journalism Network (EDJNet)</a> liegt die Zunahme in allen Landesteilen über einem Grad, in vielen Regionen deutlich darüber.
-            </p> 
-              <p> Warum steigt die Temperatur in manchen Gemeinden schneller als in anderen? 
-                  Mehrere Faktoren spielen zusammen: Hohe Bevölkerungsdichte und intensive Bodennutzung führen oft zu einem Wärmeinseleffekt. 
-                  Gleichzeitig sind Bergregionen stark betroffen, wo steigende Temperaturen zu weniger Schneefall und auftauendem Permafrost führen.
-            </p> 
-              <h3>Zwei Gemeinden, zwei Geschichten</h3> 
-              <p> Ein Beispiel dafür ist Zermatt. 
-                  Im beliebten Walliser Tourismusort am Fusse des Matterhorns ist die durchschnittliche Jahrestemperatur von −3.9 °C (1971) auf −2.5 °C (2018) gestiegen — ein Plus von rund 1.4 °C.
-            </p>
+              <p> Laut einer europaweiten Analyse des <a href="https://www.europeandatajournalism.eu/" target="_blank" rel="noopener">European Data Journalism Network (EDJNet)</a> liegt die Zunahme in allen Landesteilen über einem Grad, in vielen Regionen deutlich darüber.</p>
+              <p> Warum steigt die Temperatur in manchen Gemeinden schneller als in anderen? Mehrere Faktoren spielen zusammen: Hohe Bevölkerungsdichte und intensive Bodennutzung führen oft zu einem Wärmeinseleffekt. Gleichzeitig sind Bergregionen stark betroffen, wo steigende Temperaturen zu weniger Schneefall und auftauendem Permafrost führen.</p>
+
+              <h3>Zwei Gemeinden, zwei Geschichten</h3>
+              <p> Ein Beispiel dafür ist Zermatt. Im beliebten Walliser Tourismusort am Fusse des Matterhorns ist die durchschnittliche Jahrestemperatur von −3.9 °C (1971) auf −2.5 °C (2018) gestiegen — ein Plus von rund 1.4 °C.</p>
 
               <!-- Liniendiagramm Zermatt mit Scroll -->
               <div class="zermatt-frame" ref="zermattEl" tabindex="0" aria-label="Zeitnavigation Diagramm Zermatt" style="outline:none;">
-                <!-- Falls deine Komponente 'year' akzeptiert, wird sie hiermit live gescrubbt -->
                 <ZermattSvg :year="zermattYear" />
               </div>
-              <p> Im Gegensatz dazu steht die Gemeinde Bière im Kanton Waadt, wo sich die mittlere Jahrestemperatur im selben Zeitraum von 9.2 °C auf 10.1 °C erhöhte — ein Anstieg um rund 1.0 °C
-            </p>
+
+              <p> Im Gegensatz dazu steht die Gemeinde Bière im Kanton Waadt, wo sich die mittlere Jahrestemperatur im selben Zeitraum von 9.2 °C auf 10.1 °C erhöhte — ein Anstieg um rund 1.0 °C.</p>
 
               <!-- Liniendiagramm Bière mit Scroll -->
               <div class="biere-frame" ref="biereEl" tabindex="0" aria-label="Zeitnavigation Diagramm Bière" style="outline:none;">
                 <BiereSvg :year="biereYear" />
               </div>
-              <div class="bildlegende"> Die Liniendiagramme zeigen die durchschnittlichen Jahrestemperaturen der beiden Gemeinden Zermatt und Bière seit 1971. 
-                <a href="https://cds.climate.copernicus.eu/datasets/reanalysis-uerra-europe-single-levels?tab=overview" 
-                  target="_blank" rel="noopener" style="font-style: italic;" >Quelle: UERRA-Regionalreanalyse</a> 
+
+              <div class="bildlegende">
+                Die Liniendiagramme zeigen die durchschnittlichen Jahrestemperaturen der beiden Gemeinden Zermatt und Bière seit 1971.
+                <a href="https://cds.climate.copernicus.eu/datasets/reanalysis-uerra-europe-single-levels?tab=overview" target="_blank" rel="noopener" style="font-style: italic;">Quelle: UERRA-Regionalreanalyse</a>
               </div>
 
-              <p> Die Diagramme machen sichtbar, wie sich viele einzelne Jahre zu einem klaren langfristigen Trend summieren.
-            </p> 
-             <h3>Was bedeutet das für Ihre Gemeinde?</h3> 
-             <p> Das Projekt «Glocal Climate Change» hat Temperaturdaten von mehr als 100'000 europäischen Gemeinden ausgewertet. 
-              Für jede Gemeinde wurde die Durchschnittstemperatur der 1960er-Jahre mit jener des Zeitraums 2009–2018 verglichen. So lässt sich erkennen, wo der Klimawandel besonders stark spürbar ist – und wie Ihre eigene Gemeinde im landesweiten Vergleich abschneidet. </p>
+              <p> Die Diagramme machen sichtbar, wie sich viele einzelne Jahre zu einem klaren langfristigen Trend summieren.</p>
+
+              <h3>Was bedeutet das für Ihre Gemeinde?</h3>
+              <p> Das Projekt «Glocal Climate Change» hat Temperaturdaten von mehr als 100'000 europäischen Gemeinden ausgewertet. Für jede Gemeinde wurde die Durchschnittstemperatur der 1960er-Jahre mit jener des Zeitraums 2009–2018 verglichen. So lässt sich erkennen, wo der Klimawandel besonders stark spürbar ist – und wie Ihre eigene Gemeinde im landesweiten Vergleich abschneidet.</p>
 
               <!-- GmMapSvg -->
               <div class="map-frame">
                 <GmMapSvg :data-dir="dataDirGm" :year="yearGm" />
               </div>
-              <div class="bildlegende"> Die Karte zeigt, um wie viele Grad Celsius sich die mittlere Jahrestemperatur in den Schweizer Gemeinden zwischen den 1960er-Jahren (1961–1970) und der Periode 2009–2018 verändert hat. Grundlage sind Schätzungen aus dem Copernicus-Programm und vom Europäischen Zentrum für mittelfristige Wettervorhersage (ECMWF).
-                <a href="https://cds.climate.copernicus.eu/datasets/reanalysis-uerra-europe-single-levels?tab=overview" 
-                target="_blank" rel="noopener" style="font-style: italic;" >Quelle: UERRA-Regionalreanalyse</a> 
+              <div class="bildlegende">
+                Die Karte zeigt, um wie viele Grad Celsius sich die mittlere Jahrestemperatur in den Schweizer Gemeinden zwischen den 1960er-Jahren (1961–1970) und der Periode 2009–2018 verändert hat. Grundlage sind Schätzungen aus dem Copernicus-Programm und vom Europäischen Zentrum für mittelfristige Wettervorhersage (ECMWF).
+                <a href="https://cds.climate.copernicus.eu/datasets/reanalysis-uerra-europe-single-levels?tab=overview" target="_blank" rel="noopener" style="font-style: italic;">Quelle: UERRA-Regionalreanalyse</a>
               </div>
             </article>
           </div>
@@ -329,13 +310,82 @@ const contentTitleDy = computed(() => 0)
 </template>
 
 <style>
+/* === Google Fonts laden (direkt hier via @import) === */
+@import url('https://fonts.googleapis.com/css2?family=Merriweather:wght@700;900&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap');
+
+/* === Typo-Setup: NZZ-ähnliche Hierarchie === */
+:root{
+  --headline-font: "Merriweather", "Source Serif 4", ui-serif, Georgia, "Times New Roman", Times, serif;
+  --text-font: "Source Serif 4", ui-serif, Georgia, "Times New Roman", Times, serif;
+  --text-color: #111;
+}
+
+html, body, #app{
+  font-family: var(--text-font);
+  color: var(--text-color);
+  font-weight: 400;                 /* Source Serif 4 Regular */
+  line-height: 1.75;                /* ruhige Zeitungssatzbreite */
+  font-optical-sizing: auto;        /* nutzt optische Größen der Variable Font */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+
+.title{
+  font-family: var(--headline-font);
+  font-weight: 800;                 /* Merriweather Bold */
+  line-height: 1.25;
+  letter-spacing: 0.2px;
+  color: #000;
+  margin: 0 0 0.4em 0;
+  text-align:center;
+}
+
+h1, h2, h3{
+  font-family: var(--headline-font);
+  font-weight: 700;                 /* Merriweather Bold */
+  line-height: 1.25;
+  letter-spacing: 0.2px;
+  color: #000;
+  margin: 0 0 0.4em 0;
+}
+
+/* feinere Skala, an NZZ angelehnt */
+h1, .title{ font-size: clamp(28px, 4.2vw, 46px); }
+h2{ font-size: clamp(18px, 2.6vw, 26px); font-weight: 700; }
+h3{ font-size: clamp(16px, 2.1vw, 22px); font-weight: 700; }
+
+.subtitel{
+  font-family: var(--text-font);    /* Unterzeile als Fließtext-Stimme */
+  font-weight: 400;
+  line-height: 1.6;
+  margin-top: 8px;
+  font-size: clamp(14px, 2.2vw, 20px);
+  color: #000;
+  text-align:center;
+}
+
+.text-block p{
+  margin: 0 0 1.05em 0;
+  hyphens: auto;                    /* schöner Blocksatz-Fluss */
+}
+
+/* Autor */
+.author {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  margin: 6px 0 18px 0;
+  font-size: 12px;
+  letter-spacing: .2px;
+  color: #555;
+}
+
 .zermatt-frame svg {
   width: 600px;
   height: auto;
   max-width: none;
 }
 
-/*  Rahmen rund um weisse Content-Karte  */
+/* Rahmen rund um weisse Content-Karte */
 .frame-bg{
   --frame-intensity: 40%;
   background-color: rgba(2, 25, 72, 0.88);
@@ -346,44 +396,35 @@ const contentTitleDy = computed(() => 0)
   margin-top: -1px;
 }
 
-/* Maximalbreite & Seiteneinzug des Gesamtinhalts */
 .frame-inner{
   width: min(94vw, 1200px);
   margin: 0 auto;
   padding-inline: clamp(12px, 2vw, 28px);
 }
 
-/* --- Content & Karten --- */
 .content-card{
   background: #fff;
   padding: clamp(18px, 3vw, 36px);
   border-radius:5px;
   margin-top: clamp(16px, 3vw, 40px);
 }
+
 .content-intro{ margin: 0 0 16px 0; transition: opacity .18s linear, transform .18s ease-out; }
-.intro-title{ margin: 0; font-size: clamp(18px, 3.2vw, 32px); line-height: 1.2; color: #111; }
 
 .text-block{
   width: 100%;
   margin: 16px auto 0;
-  line-height: 1.8;
-  color: #213547;
+  color: #213547; /* kannst du auf #111 ziehen, wenn du es noch „druckiger“ willst */
 }
-.text-block h2{ margin: 0 0 8px; font-size: 15px; }
+
+.text-block h2{ margin: 0 0 8px; }
 
 /* Bildlegende */
 .bildlegende{
   margin-top: 8px;
-  font-size: 10px;
-  color:#333;
+  font-size: 11px;
+  color:#444;
   text-align:center;
-}
-/* Autor */
-.author{
-  margin-top: 8px;
-  font-size: 10px;
-  color:#333;
-  text-align:left;
 }
 
 /* Karten-Frames */
@@ -405,5 +446,4 @@ const contentTitleDy = computed(() => 0)
   padding: 0 !important;
   border-radius: 6px;
 }
-
 </style>
