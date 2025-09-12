@@ -1,3 +1,6 @@
+Hier ist **App.vue** mit den Chrome-Fixes (Events zusätzlich direkt an die Frames, `passive:false`, `touch-action:none`, `overscroll-behavior:contain`) und den richtigen Refs:
+
+```vue
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from "vue"
 import ScrollProgress from "./components/ScrollProgress.vue"
@@ -20,12 +23,12 @@ const yearGm    = ref(2018)
 
 /*  Liniendiagramme (scrubbable)  */
 const zermattYear = ref(startYear)
-const biereYear  = ref(startYear)
+const biereYear   = ref(startYear)
 
 /* Frame-Referenzen */
-const mapEl    = ref(null)   // ChMapSvg Frame
+const mapEl     = ref(null)   // ChMapSvg Frame
 const zermattEl = ref(null)   // Zermatt Diagramm Frame
-const biereEl  = ref(null)   // Bière Diagramm Frame
+const biereEl   = ref(null)   // Bière Diagramm Frame
 
 const frameH = ref(520)
 let resizeObs = null
@@ -51,14 +54,14 @@ function elementCentered(el){
 
 /* Wähle den zentriertesten Frame (innerhalb Toleranz) */
 function getActiveTarget(){
-  const cMap    = elementCentered(mapEl.value)
+  const cMap     = elementCentered(mapEl.value)
   const cZermatt = elementCentered(zermattEl.value)
-  const cBiere  = elementCentered(biereEl.value)
+  const cBiere   = elementCentered(biereEl.value)
 
   const candidates = [
-    { key:"map",    ...cMap },
-    { key:"zermatt", ...cZermatt},
-    { key:"biere",  ...cBiere }
+    { key:"map",     ...cMap },
+    { key:"zermatt", ...cZermatt },
+    { key:"biere",   ...cBiere }
   ].filter(c => c.centered)
 
   if (candidates.length === 0) return null
@@ -208,19 +211,44 @@ function handleKeydown(e){
 /* ---- Window-Scroll ---- */
 function handleWindowScroll(){ if (window.scrollY === 0) scrollCapture = false }
 
+/* ---- (Neu) Listener direkt an Frames binden – wichtig für Chrome ---- */
+function bindFrameListeners(el){
+  if (!el) return
+  el.addEventListener('wheel',      handleWheel,      { passive:false })
+  el.addEventListener('touchstart', handleTouchStart, { passive:false })
+  el.addEventListener('touchmove',  handleTouchMove,  { passive:false })
+  el.addEventListener('touchend',   handleTouchEnd,   { passive:false })
+}
+function unbindFrameListeners(el){
+  if (!el) return
+  el.removeEventListener('wheel',      handleWheel)
+  el.removeEventListener('touchstart', handleTouchStart)
+  el.removeEventListener('touchmove',  handleTouchMove)
+  el.removeEventListener('touchend',   handleTouchEnd)
+}
+
 /* ---- Mount/Unmount ---- */
 onMounted(() => {
-  nextTick(updateFrameH)
-  if (window.ResizeObserver){
-    resizeObs = new ResizeObserver(updateFrameH)
-    if (mapEl.value) resizeObs.observe(mapEl.value)
-  }
-  window.addEventListener('wheel', handleWheel, { passive: false })
-  window.addEventListener('touchstart', handleTouchStart, { passive: false })
-  window.addEventListener('touchmove', handleTouchMove, { passive: false })
-  window.addEventListener('touchend', handleTouchEnd, { passive: false })
-  window.addEventListener('keydown', handleKeydown, true)
-  window.addEventListener('scroll', handleWindowScroll)
+  nextTick(() => {
+    updateFrameH()
+    if (window.ResizeObserver){
+      resizeObs = new ResizeObserver(updateFrameH)
+      if (mapEl.value) resizeObs.observe(mapEl.value)
+    }
+
+    // Window-Listener
+    window.addEventListener('wheel',      handleWheel,      { passive:false })
+    window.addEventListener('touchstart', handleTouchStart, { passive:false })
+    window.addEventListener('touchmove',  handleTouchMove,  { passive:false })
+    window.addEventListener('touchend',   handleTouchEnd,   { passive:false })
+    window.addEventListener('keydown',    handleKeydown,    true)
+    window.addEventListener('scroll',     handleWindowScroll)
+
+    // (Neu) Direkt an die Frames – Chrome braucht das
+    bindFrameListeners(mapEl.value)
+    bindFrameListeners(zermattEl.value)
+    bindFrameListeners(biereEl.value)
+  })
 })
 onBeforeUnmount(() => {
   if (resizeObs && mapEl.value) resizeObs.unobserve(mapEl.value)
@@ -230,6 +258,10 @@ onBeforeUnmount(() => {
   window.removeEventListener('touchend', handleTouchEnd)
   window.removeEventListener('keydown', handleKeydown, true)
   window.removeEventListener('scroll', handleWindowScroll)
+
+  unbindFrameListeners(mapEl.value)
+  unbindFrameListeners(zermattEl.value)
+  unbindFrameListeners(biereEl.value)
 })
 
 /* ===== Neutrale Bindings für vorhandene Styles ===== */
@@ -252,10 +284,10 @@ const contentTitleDy = computed(() => 0)
                 Eine Datenanalyse zeigt, wie sich die Temperaturen seit den 1960er-Jahren verändert haben — auch vor Ihrer Haustüre.
               </h2>
 
-            <!-- Scroll-Progress-Bar -->
+              <!-- Scroll-Progress-Bar -->
               <ScrollProgress
                 anchor="#article-subtitle"
-                height="3px"
+                height="2.5px"
                 color="#111"
                 track="rgba(2,25,72,.15)"
                 top="0"
@@ -271,9 +303,9 @@ const contentTitleDy = computed(() => 0)
               <div class="svg-frame" ref="mapEl" tabindex="0" aria-label="Karten-Zeitnavigation" style="outline:none; position:relative;">
                 <ChMapSvg :year="year" :data-dir="dataDir" />
               </div>
-                <div class="bildlegende">
-                  Die Karte zeigt die Entwicklung der mittleren Jahrestemperaturen in der Schweiz von 1971 bis 2018. Grundlage sind modellbasierte Schätzungen aus dem europäischen Klimadatenprojekt Copernicus in Zusammenarbeit mit dem Europäischen Zentrum für mittelfristige Wettervorhersage (ECMWF).
-                  <a href="https://cds.climate.copernicus.eu/datasets/reanalysis-uerra-europe-single-levels?tab=overview" target="_blank" rel="noopener" style="font-style: italic;">Quelle: UERRA-Regionalreanalyse</a>
+              <div class="bildlegende">
+                Die Karte zeigt die Entwicklung der mittleren Jahrestemperaturen in der Schweiz von 1971 bis 2018. Grundlage sind modellbasierte Schätzungen aus dem europäischen Klimadatenprojekt Copernicus in Zusammenarbeit mit dem Europäischen Zentrum für mittelfristige Wettervorhersage (ECMWF).
+                <a href="https://cds.climate.copernicus.eu/datasets/reanalysis-uerra-europe-single-levels?tab=overview" target="_blank" rel="noopener" style="font-style: italic;">Quelle: UERRA-Regionalreanalyse</a>
               </div>
 
               <p> Laut einer europaweiten Analyse des <a href="https://www.europeandatajournalism.eu/" target="_blank" rel="noopener">European Data Journalism Network (EDJNet)</a> liegt die Zunahme in allen Landesteilen über einem Grad, in vielen Regionen deutlich darüber.</p>
@@ -338,17 +370,16 @@ const contentTitleDy = computed(() => 0)
 html, body, #app{
   font-family: var(--text-font);
   color: var(--text-color);
-  font-weight: 400;                 /* Source Serif 4 Regular */
-  line-height: 1.75;                /* ruhige Zeitungssatzbreite */
-  font-optical-sizing: auto;        /* nutzt optische Größen der Variable Font */
+  font-weight: 400;
+  line-height: 1.75;
+  font-optical-sizing: auto;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-
 .title{
   font-family: var(--headline-font);
-  font-weight: 700;                 /* Merriweather Bold */
+  font-weight: 700;
   line-height: 1.25;
   letter-spacing: 0.2px;
   color: #000;
@@ -360,7 +391,7 @@ html, body, #app{
 
 h1, h2, h3{
   font-family: var(--headline-font);
-  font-weight: 600;                 /* Merriweather Bold */
+  font-weight: 600;
   line-height: 1.25;
   letter-spacing: 0.2px;
   color: #000;
@@ -375,7 +406,7 @@ h2{ font-size: clamp(18px, 2.6vw, 26px); font-weight: 700; }
 h3{ font-size: clamp(16px, 2.1vw, 22px); font-weight: 700; }
 
 .subtitle{
-  font-family: var(--text-font);    /* Unterzeile als Fliesstext */
+  font-family: var(--text-font);
   font-weight: 400;
   line-height: 1.6;
   font-size: clamp(14px, 2.2vw, 20px);
@@ -386,7 +417,7 @@ h3{ font-size: clamp(16px, 2.1vw, 22px); font-weight: 700; }
 
 .text-block p{
   margin: 0 0 1.05em 0;
-  hyphens: auto; /*  für Blocksatz-Fluss */
+  hyphens: auto;
 }
 
 /* Autor */
@@ -398,12 +429,16 @@ h3{ font-size: clamp(16px, 2.1vw, 22px); font-weight: 700; }
   color: #555;
 }
 
+/* Diagramm-Frames (responsive, Chrome-friendly) */
 .linien-frame {
   width: 100%;
-  aspect-ratio: 1160 / 470;  /* passend zu vbW/vbH */
+  aspect-ratio: 1160 / 470;  /* passend zu vbW/vbH der Diagramme */
   display: block;
   margin-bottom: var(--s-3);
   margin-top: var(--s-3);
+  /* WICHTIG für Chrome: Touch/Wheel an die Komponente durchreichen */
+  touch-action: none;
+  overscroll-behavior: contain;
 }
 
 /* Rahmen rund um weisse Content-Karte */
@@ -435,7 +470,7 @@ h3{ font-size: clamp(16px, 2.1vw, 22px); font-weight: 700; }
 .text-block{
   width: 100%;
   margin: 16px auto 0;
-  color: #213547; /* kannst du auf #111 ziehen, wenn du es noch „druckiger“ willst */
+  color: #213547;
 }
 
 /* Bildlegende */
@@ -458,6 +493,7 @@ h3{ font-size: clamp(16px, 2.1vw, 22px); font-weight: 700; }
   margin-top: var(--s-3);
 }
 
+/* ChMap-Frame (separat, weil ohne overflow hidden) */
 .svg-frame{
   width: 100%;
   aspect-ratio: 1200 / 740;
@@ -468,5 +504,9 @@ h3{ font-size: clamp(16px, 2.1vw, 22px); font-weight: 700; }
   margin: 0 !important;
   padding: 0 !important;
   border-radius: 6px;
+
+  /* Wichtig für Chrome: Touch/Wheel an die Komponente durchreichen */
+  touch-action: none;
+  overscroll-behavior: contain;
 }
 </style>

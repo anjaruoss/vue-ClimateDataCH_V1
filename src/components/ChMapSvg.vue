@@ -226,7 +226,7 @@ function fillFor(f) {
 /* HUD über der Karte; Maus nicht blockieren */
 .hud { position: absolute; inset: 0; pointer-events: none; }
 
-/* Jahr links oben – Größen kommen per :style */
+/* Jahr links oben – Grössen kommen per :style */
 .hud-year {
   position: absolute;
   font-weight: 700;
