@@ -308,6 +308,19 @@ function fillForKey(k){
   return (v != null && !isNaN(v)) ? colorScale.value(v) : '#c8c8c8'
 }
 
+// Farbverlegende
+const legendStops = 12
+const legendCssGradient = computed(() => {
+  if (!colorScale.value) return 'linear-gradient(#ccc,#ccc)'
+  const parts = []
+  for (let i = 0; i < legendStops; i++){
+    const t   = i / (legendStops - 1)             // 0..1
+    const val = domainMax.value * (1 - t) + domainMin.value * t
+    parts.push(`${colorScale.value(val)} ${Math.round(t*100)}%`)
+  }
+  return `linear-gradient(to bottom, ${parts.join(', ')})`
+})
+
 /* Tooltip/Hover */
 function onEnter(p, evt){
   if (isPanning.value) return
@@ -476,19 +489,27 @@ function keyForRaw(raw){ const k0=norm(raw); const k=nameAlias[k0]||k0; return f
 
     <!-- HUD -->
     <div class="hud" v-if="ready" :style="{ '--uiScale': uiScaleCss, '--zoomScale': zoomScaleCss }">
-      <!-- Legende -->
-      <div class="hud-legend">
-        <div class="legend-label legend-top">{{ domainMax.toFixed(1) }} °C</div>
-        <svg class="legend-bar" :width="legendW" :height="legendH" viewBox="0 0 16 180" preserveAspectRatio="none">
-          <defs>
-            <linearGradient :id="legendId" x1="0" y1="0" x2="0" y2="1">
-              <stop v-for="i in 101" :key="i" :offset="(i-1)/100" :stop-color="colorScale(legendValue(i-1))" />
-            </linearGradient>
-          </defs>
-          <rect x="0" y="0" width="16" height="180" :fill="`url(#${legendId})`" rx="2" />
-        </svg>
-        <div class="legend-label legend-bottom">{{ domainMin.toFixed(1) }} °C</div>
+      
+    <!-- Legende -->
+    <div
+      class="hud-legend"
+      :style="{ right: 'var(--legendOffset)', top: 'var(--legendOffset)' }"
+    >
+    <div class="legend-label legend-top" :style="{ fontSize: `calc(9px * var(--legendUiScale))` }">
+      {{ domainMax.toFixed(1) }} °C
+    </div>
+    <div
+      class="legend-bar"
+      :style="{
+      width:  legendW + 'px',
+      height: legendH + 'px',
+      background: legendCssGradient
+        }"
+      />
+      <div class="legend-label legend-bottom" :style="{ fontSize: `calc(9px * var(--legendUiScale))` }">
+        {{ domainMin.toFixed(1) }} °C
       </div>
+    </div>
 
       <!-- Suche -->
       <div class="hud-search">
@@ -574,18 +595,12 @@ path.is-selected{ stroke:#000; stroke-width:1.6; filter:drop-shadow(0 0 3px rgba
 /* Legende */
 .hud-legend{
   position:absolute;
-  right:var(--legendOffset, min(18px,3.2vw));
-  top:var(--legendOffset, min(18px,3.2vw));
   display:flex; flex-direction:column; align-items:center;
   gap:calc(4px * var(--legendUiScale, var(--uiScale)));
   pointer-events:none;
 }
-.legend-bar{ display:block; }
-.legend-label{
-  font-size:calc(12px * var(--legendUiScale, var(--uiScale)));
-  line-height:1; 
-  color:#000;
-}
+.legend-bar{ display:block; border-radius:2px; }
+.legend-label{ line-height:1; color:#333; text-shadow:0 1px 1px rgba(255,255,255,.5); }
 
 /* Suche */
 .hud-search{

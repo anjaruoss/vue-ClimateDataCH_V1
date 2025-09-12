@@ -58,25 +58,31 @@ const clamp = (x, a, b) => Math.min(b, Math.max(a, x))
 // Design-Werte (bei 1200×740) → skaliert
 const design = {
   gap: 24,          // Randabstand (links/rechts/oben)
-  yearSize: 28,     // Jahreszahl-Basisgröße
+  yearSize: 38,     // Jahreszahl-Basisgröße
   legendW: 8,      // Balkenbreite
-  legendH: 140,     // Balkenhöhe
-  legendFont: 12,   // Legenden-Text
+  legendH: 90,     // Balkenhöhe
+  legendFont: 9,   // Legenden-Text
 }
 
 const leftPx       = computed(() => Math.round(design.gap * hudScale.value))
 const topPx        = computed(() => Math.round(design.gap * hudScale.value))
 const yearFontPx   = computed(() => Math.round(clamp(design.yearSize * hudScale.value, 12, 40)) + 'px')
-const legendBarW   = computed(() => Math.round(clamp(design.legendW * hudScale.value, 12, 36)))
-const legendBarH   = computed(() => Math.round(clamp(design.legendH * hudScale.value, 90, 300)))
+const legendBarW   = computed(() => Math.round(clamp(design.legendW * hudScale.value, 8, 24)))
+const legendBarH   = computed(() => Math.round(clamp(design.legendH * hudScale.value, 70, 300)))
 const legendFontPx = computed(() => Math.round(clamp(design.legendFont * hudScale.value, 9, 18)) + 'px')
 
-// Farbverlauf (HUD-legend eigenes kleines SVG)
-const legendId  = `legend-${Math.random().toString(36).slice(2)}`
-function legendValue(p) {
-  const t = p / 100
-  return domainMax.value * (1 - t) + domainMin.value * t
-}
+// Farbverlegende
+const legendStops = 12
+const legendCssGradient = computed(() => {
+  if (!colorScale.value) return 'linear-gradient(#ccc,#ccc)'
+  const parts = []
+  for (let i = 0; i < legendStops; i++){
+    const t   = i / (legendStops - 1)             // 0..1
+    const val = domainMax.value * (1 - t) + domainMin.value * t
+    parts.push(`${colorScale.value(val)} ${Math.round(t*100)}%`)
+  }
+  return `linear-gradient(to bottom, ${parts.join(', ')})`
+})
 
 /* ===== Laden & Fitting ===== */
 onMounted(async () => {
@@ -167,7 +173,7 @@ function fillFor(f) {
         />
       </g>
     </svg>
-
+  </div>
     <!-- HUD (skaliert mit hudScale) -->
     <div class="hud">
       <!-- Jahr -->
@@ -180,41 +186,28 @@ function fillFor(f) {
           fontSize: yearFontPx
         }"
       >{{ year }}</div>
-
+    </div>
       <!-- Legende -->
       <div
-        class="hud-legend"
-        v-if="colorScale"
-        :style="{ right: leftPx + 'px', top: topPx + 'px' }"
-      >
-        <div class="legend-label" :style="{ fontSize: legendFontPx }">
-          {{ domainMax.toFixed(1) }} °C
-        </div>
+  class="hud-legend"
+  v-if="colorScale"
+  :style="{ right: leftPx + 'px', top: topPx + 'px' }"
+>
+  <div class="legend-label" :style="{ fontSize: legendFontPx }">
+    {{ domainMax.toFixed(1) }} °C
+  </div>
 
-        <svg
-          class="legend-bar"
-          :width="legendBarW"
-          :height="legendBarH"
-          viewBox="0 0 16 180"
-          preserveAspectRatio="none"
-        >
-          <defs>
-            <linearGradient :id="legendId" x1="0" y1="0" x2="0" y2="1">
-              <stop
-                v-for="i in 101"
-                :key="i"
-                :offset="(i-1)/100"
-                :stop-color="colorScale(legendValue(i-1))"
-              />
-            </linearGradient>
-          </defs>
-          <rect x="0" y="0" width="16" height="180" :fill="`url(#${legendId})`" rx="2" />
-        </svg>
-
-        <div class="legend-label" :style="{ fontSize: legendFontPx }">
-          {{ domainMin.toFixed(1) }} °C
-        </div>
-      </div>
+  <div
+    class="legend-bar"
+    :style="{
+      width:  legendBarW + 'px',
+      height: legendBarH + 'px',
+      background: legendCssGradient
+    }"
+    >
+  <div class="legend-label" :style="{ fontSize: legendFontPx }">
+    {{ domainMin.toFixed(1) }} °C
+  </div>
     </div>
   </div>
 </template>
@@ -244,8 +237,6 @@ function fillFor(f) {
   z-index: 3;
 }
 
-.legend-bar   { display: block; }
-.legend-label { 
-  line-height: 1; 
-  color: #000;}
+.legend-bar   { display: block; border-radius: 2px; }
+.legend-label { line-height: 1; color:#333; text-shadow:0 1px 1px rgba(255,255,255,.4); }
 </style>
