@@ -2,6 +2,8 @@
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import * as d3 from 'd3'
 
+const YEAR_MIN = 1971, YEAR_MAX = 2018
+
 const props = defineProps({
   year:      { type: Number, required: true },
   dataDir:   { type: String,  default: '/data' },
@@ -97,7 +99,7 @@ onMounted(async () => {
   })
 
   byYearByName.value = d3.rollup(
-    rows.filter(Boolean),
+    rows.filter(d => d.year >= 1971 && d.year <= 2018), // <— Jahrfenster angleichen
     v => v.length === 1 ? v[0].avg_year : d3.mean(v, d => d.avg_year),
     d => d.year,
     d => {
@@ -108,7 +110,11 @@ onMounted(async () => {
   )
 
   const allVals = []
-  for (const m of byYearByName.value.values()) for (const v of m.values()) if (v!=null) allVals.push(v)
+  for (const [yr, m] of byYearByName.value.entries()) {
+    if (yr < 1971 || yr > 2018) continue
+    for (const v of m.values()) if (v != null) allVals.push(v)
+  }
+
   const ext = d3.extent(allVals)
   domainMin.value = ext[0]; domainMax.value = ext[1]
   colorScale.value = d3.scaleSequential().domain(ext).interpolator(d3.interpolateTurbo)
