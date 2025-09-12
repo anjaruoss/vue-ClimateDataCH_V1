@@ -1,6 +1,3 @@
-Hier ist **App.vue** mit den Chrome-Fixes (Events zusätzlich direkt an die Frames, `passive:false`, `touch-action:none`, `overscroll-behavior:contain`) und den richtigen Refs:
-
-```vue
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from "vue"
 import ScrollProgress from "./components/ScrollProgress.vue"
@@ -21,7 +18,7 @@ const year    = ref(startYear)
 const dataDirGm = "/data"
 const yearGm    = ref(2018)
 
-/*  Liniendiagramme (scrubbable)  */
+/*  Liniendiagramme  */
 const zermattYear = ref(startYear)
 const biereYear   = ref(startYear)
 
