@@ -1,14 +1,6 @@
 <script setup>
 import { onMounted, onBeforeUnmount, ref, computed } from "vue"
 
-/**
- * Props:
- * - anchor: CSS-Selector oder null. Wenn gesetzt, „klebt“ die Leiste oben, sobald der Anchor aus dem Viewport raus ist.
- * - height: Höhe der Leiste (z.B. '3px')
- * - color:  Farbe des Progress-Balkens
- * - track:  Hintergrund/Track-Farbe
- * - top:    Abstand von oben, wenn „stuck“ (z.B. '0', '12px')
- */
 const props = defineProps({
   anchor: { type: String, default: null },
   height: { type: String, default: "3px" },
@@ -18,7 +10,7 @@ const props = defineProps({
 })
 
 const stuck = ref(false)
-const progress = ref(0) // 0..1
+const progress = ref(0) 
 
 let io = null
 let raf = null
@@ -75,7 +67,7 @@ const barStyle = computed(() => ({
   "--sp-color": props.color,
   "--sp-track": props.track,
   "--sp-top": props.top,
-  "--sp-p": String(progress.value), // als CSS var
+  "--sp-p": String(progress.value),
 }))
 </script>
 

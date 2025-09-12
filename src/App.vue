@@ -1,10 +1,13 @@
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, nextTick } from "vue"
+import { ref, computed } from "vue"
 import ScrollProgress from "./components/ScrollProgress.vue"
 import ChMapSvg from "./components/ChMapSvg.vue"
 import GmMapSvg from "./components/GmMapSvg.vue"
 import ZermattSvg from "./components/ZermattSvg.vue"
 import BiereSvg from "./components/BiereSvg.vue"
+
+// zentrales Scrubber-Composable
+import { useScrubber } from "./composables/Scrubber"
 
 /* Gemeinsame Zeitspanne */
 const startYear = 1971
@@ -22,243 +25,27 @@ const yearGm    = ref(2018)
 const zermattYear = ref(startYear)
 const biereYear   = ref(startYear)
 
-/* Frame-Referenzen */
+/* Frame-Referenzen (Container-Elemente) */
 const mapEl     = ref(null)   // ChMapSvg Frame
 const zermattEl = ref(null)   // Zermatt Diagramm Frame
 const biereEl   = ref(null)   // Bière Diagramm Frame
 
-const frameH = ref(520)
-let resizeObs = null
-function updateFrameH(){
-  const el = mapEl.value
-  if (!el) return
-  const r = el.getBoundingClientRect()
-  frameH.value = Math.max(0, Math.round(r.height))
-}
+// Schlankes, einheitliches Scrubber-State-Handling
+const visualizations = [
+  { key: 'map',     ref: mapEl,     year },            // nutzt gemeinsame Grenzen
+  { key: 'zermatt', ref: zermattEl, year: zermattYear },
+  { key: 'biere',   ref: biereEl,   year: biereYear   },
+]
 
-/* Center-Detection & Target-Routing */
-function elementCentered(el){
-  if (!el) return { centered:false, dist:Infinity }
-  const r = el.getBoundingClientRect()
-  const vpH = window.innerHeight
-  const centerY = vpH / 2
-  const elCenterY = r.top + r.height / 2
-  const tol = Math.max(32, Math.round(vpH * 0.25))
-  const intersects = r.bottom > 0 && r.top < vpH
-  const dist = Math.abs(elCenterY - centerY)
-  return { centered: intersects && dist <= tol, dist }
-}
-
-/* Wähle den zentriertesten Frame (innerhalb Toleranz) */
-function getActiveTarget(){
-  const cMap     = elementCentered(mapEl.value)
-  const cZermatt = elementCentered(zermattEl.value)
-  const cBiere   = elementCentered(biereEl.value)
-
-  const candidates = [
-    { key:"map",     ...cMap },
-    { key:"zermatt", ...cZermatt },
-    { key:"biere",   ...cBiere }
-  ].filter(c => c.centered)
-
-  if (candidates.length === 0) return null
-  candidates.sort((a,b) => a.dist - b.dist)
-  return candidates[0].key 
-}
-
-/* Für jedes Target: Zugriff auf Wert + Setter + Grenzen */
-function getScrubberFor(target){
-  if (target === "map"){
-    return {
-      get: () => year.value,
-      set: (v) => { year.value = clampYear(v) },
-      min: startYear, max: endYear
-    }
-  }
-  if (target === "zermatt"){
-    return {
-      get: () => zermattYear.value,
-      set: (v) => { zermattYear.value = clampYear(v) },
-      min: startYear, max: endYear
-    }
-  }
-  if (target === "biere"){
-    return {
-      get: () => biereYear.value,
-      set: (v) => { biereYear.value = clampYear(v) },
-      min: startYear, max: endYear
-    }
-  }
-  return null
-}
-
-/* Scroll-/Touch-/Keyboard-Handling */
-let scrollCapture = false
-let lastTouchY = null
-
-function clampYear(val){ return Math.max(startYear, Math.min(endYear, val)) }
-
-/* Geschwindigkeiten */
-const WHEEL_PX_PER_YEAR = 50
-const TOUCH_PX_PER_YEAR = 50
-let wheelAccum = 0
-let touchAccum = 0
-let wheelIdleTimer = null
-
-function resetWheelAccum(){
-  wheelAccum = 0
-  if (wheelIdleTimer){ clearTimeout(wheelIdleTimer); wheelIdleTimer = null }
-}
-function scheduleWheelReset(){
-  clearTimeout(wheelIdleTimer)
-  wheelIdleTimer = setTimeout(resetWheelAccum, 120)
-}
-
-/* Scrolling-Wheel-Delta normalisieren (deltaMode: 0 px, 1 Zeilen, 2 Seiten) */
-function normalizeWheel(e){
-  let scale = 1
-  if (e.deltaMode === 1) scale = 16
-  else if (e.deltaMode === 2) scale = window.innerHeight
-  return e.deltaY * scale // >0 = nach unten
-}
-
-/* Scrolling-Wheel */
-function handleWheel(e){
-  if (document.activeElement && document.activeElement.tagName === 'INPUT') return
-  const dPix = normalizeWheel(e)
-  const targetKey = getActiveTarget()
-
-  if (!targetKey){
-    scrollCapture = false
-    resetWheelAccum()
-    return
-  }
-  scrollCapture = true
-
-  const scr = getScrubberFor(targetKey)
-  if (!scr) return
-
-  const cur = scr.get()
-  if ((dPix > 0 && cur === scr.max) || (dPix < 0 && cur === scr.min)){
-    resetWheelAccum()
-    return
-  }
-
-  e.preventDefault()
-  wheelAccum += dPix
-  if (Math.abs(wheelAccum) >= WHEEL_PX_PER_YEAR){
-    const dir = wheelAccum > 0 ? 1 : -1
-    scr.set(cur + dir)
-    wheelAccum -= dir * WHEEL_PX_PER_YEAR
-  }
-  scheduleWheelReset()
-}
-
-/* ---- Touch ---- */
-function handleTouchStart(e){ if (e.touches.length === 1) lastTouchY = e.touches[0].clientY }
-function handleTouchMove(e){
-  if (lastTouchY == null) return
-  const touchY = e.touches[0].clientY
-  const d = lastTouchY - touchY
-  const targetKey = getActiveTarget()
-
-  if (!targetKey){
-    scrollCapture = false
-    touchAccum = 0
-    lastTouchY = touchY
-    return
-  }
-  scrollCapture = true
-
-  const scr = getScrubberFor(targetKey)
-  if (!scr) return
-  const cur = scr.get()
-
-  if ((d > 0 && cur === scr.max) || (d < 0 && cur === scr.min)){
-    touchAccum = 0
-    lastTouchY = touchY
-    return
-  }
-
-  e.preventDefault()
-  touchAccum += d
-  while (Math.abs(touchAccum) >= TOUCH_PX_PER_YEAR){
-    const dir = touchAccum > 0 ? 1 : -1
-    scr.set(scr.get() + dir)
-    touchAccum -= dir * TOUCH_PX_PER_YEAR
-  }
-  lastTouchY = touchY
-}
-function handleTouchEnd(){ lastTouchY = null; touchAccum = 0 }
-
-/* ---- Keyboard: nur fürs zentrierteste Target ---- */
-function handleKeydown(e){
-  const targetKey = getActiveTarget()
-  if (!targetKey) return
-  const scr = getScrubberFor(targetKey)
-  if (!scr) return
-  const cur = scr.get()
-
-  if (["ArrowUp","PageUp"].includes(e.key)){ e.preventDefault(); scr.set(cur - 1) }
-  else if (["ArrowDown","PageDown"].includes(e.key)){ e.preventDefault(); scr.set(cur + 1) }
-  else if (e.key === "Home"){ e.preventDefault(); scr.set(scr.min) }
-  else if (e.key === "End"){ e.preventDefault(); scr.set(scr.max) }
-}
-
-/* ---- Window-Scroll ---- */
-function handleWindowScroll(){ if (window.scrollY === 0) scrollCapture = false }
-
-/* ---- (Neu) Listener direkt an Frames binden – wichtig für Chrome ---- */
-function bindFrameListeners(el){
-  if (!el) return
-  el.addEventListener('wheel',      handleWheel,      { passive:false })
-  el.addEventListener('touchstart', handleTouchStart, { passive:false })
-  el.addEventListener('touchmove',  handleTouchMove,  { passive:false })
-  el.addEventListener('touchend',   handleTouchEnd,   { passive:false })
-}
-function unbindFrameListeners(el){
-  if (!el) return
-  el.removeEventListener('wheel',      handleWheel)
-  el.removeEventListener('touchstart', handleTouchStart)
-  el.removeEventListener('touchmove',  handleTouchMove)
-  el.removeEventListener('touchend',   handleTouchEnd)
-}
-
-/* ---- Mount/Unmount ---- */
-onMounted(() => {
-  nextTick(() => {
-    updateFrameH()
-    if (window.ResizeObserver){
-      resizeObs = new ResizeObserver(updateFrameH)
-      if (mapEl.value) resizeObs.observe(mapEl.value)
-    }
-
-    // Window-Listener
-    window.addEventListener('wheel',      handleWheel,      { passive:false })
-    window.addEventListener('touchstart', handleTouchStart, { passive:false })
-    window.addEventListener('touchmove',  handleTouchMove,  { passive:false })
-    window.addEventListener('touchend',   handleTouchEnd,   { passive:false })
-    window.addEventListener('keydown',    handleKeydown,    true)
-    window.addEventListener('scroll',     handleWindowScroll)
-
-    // (Neu) Direkt an die Frames – Chrome braucht das
-    bindFrameListeners(mapEl.value)
-    bindFrameListeners(zermattEl.value)
-    bindFrameListeners(biereEl.value)
-  })
-})
-onBeforeUnmount(() => {
-  if (resizeObs && mapEl.value) resizeObs.unobserve(mapEl.value)
-  window.removeEventListener('wheel', handleWheel)
-  window.removeEventListener('touchstart', handleTouchStart)
-  window.removeEventListener('touchmove', handleTouchMove)
-  window.removeEventListener('touchend', handleTouchEnd)
-  window.removeEventListener('keydown', handleKeydown, true)
-  window.removeEventListener('scroll', handleWindowScroll)
-
-  unbindFrameListeners(mapEl.value)
-  unbindFrameListeners(zermattEl.value)
-  unbindFrameListeners(biereEl.value)
+// Aktiviert Scroll-/Touch-/Keyboard-Routing auf den zentriertesten Frame
+useScrubber(visualizations, {
+  min: startYear,
+  max: endYear,
+  wheelPxPerYear: 50,   // Geschwindigkeiten (dein bisheriger Standard)
+  touchPxPerYear: 50,
+  tolMinPx: 32,         // Center-Detection Toleranz
+  tolRatioVp: 0.25,
+  wheelIdleMs: 120
 })
 
 /* ===== Neutrale Bindings für vorhandene Styles ===== */
@@ -414,7 +201,7 @@ h3{ font-size: clamp(16px, 2.1vw, 22px); font-weight: 700; }
 
 .text-block p{
   margin: 0 0 1.05em 0;
-  hyphens: auto;
+  hyphens: auto; /* nicht kürzen! */
 }
 
 /* Autor */
