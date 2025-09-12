@@ -245,5 +245,7 @@ function fillFor(f) {
 }
 
 .legend-bar   { display: block; }
-.legend-label { line-height: 1; color: #333; text-shadow: 0 1px 1px rgba(255,255,255,.4); }
+.legend-label { 
+  line-height: 1; 
+  color: #000;}
 </style>
