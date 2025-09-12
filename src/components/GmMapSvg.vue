@@ -603,6 +603,7 @@ path.is-selected{ stroke:#000; stroke-width:1.6; filter:drop-shadow(0 0 3px rgba
   background:rgba(237, 236, 236, 0.92); backdrop-filter:blur(4px);
 }
 
+
 .gm-wrap.is-expanded .search-input{
   font-size: clamp(12px, calc(16px * var(--uiScale)), 18px);
   padding: calc(8px * var(--uiScale)) calc(14px * var(--uiScale));
@@ -688,7 +689,7 @@ path.is-selected{ stroke:#000; stroke-width:1.6; filter:drop-shadow(0 0 3px rgba
 /* Info-Box */
 .gm-infobox{
   position:absolute; transform:translate(-50%,-100%);
-  background:rgba(97, 96, 96, 0.82); color:#fff; padding:10px 14px;
+  background:rgba(2, 25, 72, 0.8); color:#fff; padding:10px 14px;
   border-radius:10px; max-width:280px; box-shadow:0 6px 18px rgba(0,0,0,.25);
 }
 .info-name{ font-weight:700; margin-bottom:4px; }
