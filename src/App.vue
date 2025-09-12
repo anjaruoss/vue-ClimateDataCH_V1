@@ -255,6 +255,7 @@ const contentTitleDy = computed(() => 0)
                 Die Schweiz gehört zu den Hotspots des Klimawandels. 
                 Eine Datenanalyse zeigt, wie sich die Temperaturen seit den 1960er-Jahren verändert haben — auch vor Ihrer Haustüre.
               </h2>
+              <div class="author">Anja Ruoss</div>
                 <p>Klimawandel ist kein fernes Phänomen — ob in den Städten, wo Hitzeperioden spürbar zunehmen, oder in den Bergen, wo Lawinen, Murgänge und Steinschläge drohen: Die Auswirkungen sind vielfältig und direkt.
               </p> 
                 <p>Seit Beginn der Industrialisierung hat sich die Erde im Schnitt um rund 1,3 Grad erwärmt. In der Schweiz liegt dieser Wert sogar bei 2,9 Grad. Damit gehört das Land zu den Hotspots des Klimawandels. Gründe dafür sind unter anderem die geografische Lage im Herzen Europas und die Sensibilität der Alpenregion.
@@ -271,7 +272,7 @@ const contentTitleDy = computed(() => 0)
                 style="outline:none; position:relative;"
               >
                 <ChMapSvg :year="year" :data-dir="dataDir" />
-                  <div class="bildlegende-outer"> Die Karte zeigt die Entwicklung der mittleren Jahrestemperaturen in der Schweiz von 1971 bis 2018. Grundlage sind modellbasierte Schätzungen aus dem europäischen Klimadatenprojekt Copernicus in Zusammenarbeit mit dem Europäischen Zentrum für mittelfristige Wettervorhersage (ECMWF). 
+                  <div class="bildlegende"> Die Karte zeigt die Entwicklung der mittleren Jahrestemperaturen in der Schweiz von 1971 bis 2018. Grundlage sind modellbasierte Schätzungen aus dem europäischen Klimadatenprojekt Copernicus in Zusammenarbeit mit dem Europäischen Zentrum für mittelfristige Wettervorhersage (ECMWF). 
                     <a href="https://cds.climate.copernicus.eu/datasets/reanalysis-uerra-europe-single-levels?tab=overview" 
                     target="_blank" rel="noopener" style="font-style: italic;" >Quelle: UERRA-Regionalreanalyse</a> 
                   </div>
@@ -300,7 +301,7 @@ const contentTitleDy = computed(() => 0)
               <div class="biere-frame" ref="biereEl" tabindex="0" aria-label="Zeitnavigation Diagramm Bière" style="outline:none;">
                 <BiereSvg :year="biereYear" />
               </div>
-              <div class="bildlegende-outer"> Die Liniendiagramme zeigen die durchschnittlichen Jahrestemperaturen der beiden Gemeinden Zermatt und Bière seit 1971. 
+              <div class="bildlegende"> Die Liniendiagramme zeigen die durchschnittlichen Jahrestemperaturen der beiden Gemeinden Zermatt und Bière seit 1971. 
                 <a href="https://cds.climate.copernicus.eu/datasets/reanalysis-uerra-europe-single-levels?tab=overview" 
                   target="_blank" rel="noopener" style="font-style: italic;" >Quelle: UERRA-Regionalreanalyse</a> 
               </div>
@@ -315,7 +316,7 @@ const contentTitleDy = computed(() => 0)
               <div class="map-frame">
                 <GmMapSvg :data-dir="dataDirGm" :year="yearGm" />
               </div>
-              <div class="bildlegende-outer"> Die Karte zeigt, um wie viele Grad Celsius sich die mittlere Jahrestemperatur in den Schweizer Gemeinden zwischen den 1960er-Jahren (1961–1970) und der Periode 2009–2018 verändert hat. Grundlage sind Schätzungen aus dem Copernicus-Programm und vom Europäischen Zentrum für mittelfristige Wettervorhersage (ECMWF).
+              <div class="bildlegende"> Die Karte zeigt, um wie viele Grad Celsius sich die mittlere Jahrestemperatur in den Schweizer Gemeinden zwischen den 1960er-Jahren (1961–1970) und der Periode 2009–2018 verändert hat. Grundlage sind Schätzungen aus dem Copernicus-Programm und vom Europäischen Zentrum für mittelfristige Wettervorhersage (ECMWF).
                 <a href="https://cds.climate.copernicus.eu/datasets/reanalysis-uerra-europe-single-levels?tab=overview" 
                 target="_blank" rel="noopener" style="font-style: italic;" >Quelle: UERRA-Regionalreanalyse</a> 
               </div>
@@ -352,7 +353,7 @@ const contentTitleDy = computed(() => 0)
   padding-inline: clamp(12px, 2vw, 28px);
 }
 
-/* Content & Karten */
+/* --- Content & Karten --- */
 .content-card{
   background: #fff;
   padding: clamp(18px, 3vw, 36px);
@@ -369,6 +370,21 @@ const contentTitleDy = computed(() => 0)
   color: #213547;
 }
 .text-block h2{ margin: 0 0 8px; font-size: 15px; }
+
+/* Bildlegende */
+.bildlegende{
+  margin-top: 8px;
+  font-size: 10px;
+  color:#333;
+  text-align:center;
+}
+/* Autor */
+.author{
+  margin-top: 8px;
+  font-size: 10px;
+  color:#333;
+  text-align:left;
+}
 
 /* Karten-Frames */
 .map-frame{
@@ -390,11 +406,4 @@ const contentTitleDy = computed(() => 0)
   border-radius: 6px;
 }
 
-/* Bildlegende */
-.bildlegende-outer{
-  margin-top: 8px;
-  font-size: 10px;
-  color:#333;
-  text-align:center;
-}
 </style>
