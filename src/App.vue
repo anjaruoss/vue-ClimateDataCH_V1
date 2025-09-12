@@ -78,6 +78,8 @@ function focusGmLinieEl(retries = 10) {
     el.focus()
     return
   }
+  // Scrolliere das Element ins Zentrum, falls nicht sichtbar
+  el.scrollIntoView({ block: 'center', behavior: 'auto' })
   if (retries > 0) {
     setTimeout(() => focusGmLinieEl(retries - 1), 50)
   }
