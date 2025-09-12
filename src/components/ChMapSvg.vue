@@ -61,7 +61,7 @@ const topPx        = computed(() => Math.round(design.gap * hudScale.value))
 const yearFontPx   = computed(() => Math.round(clamp(design.yearSize * hudScale.value, 12, 40)) + 'px')
 const legendBarW   = computed(() => Math.round(clamp(design.legendW  * hudScale.value, 12, 36)))
 const legendBarH   = computed(() => Math.round(clamp(design.legendH  * hudScale.value, 90, 300)))
-const legendFontPx = computed(() => Math.round(clamp(design.legendFont* hudScale.value, 9, 18)) + 'px')
+const legendFontPx = computed(() => Math.round(clamp(design.legendFont* hudScale.value, 10, 18)) + 'px')
 
 // Legenden-Gradient
 const legendId = `legend-${Math.random().toString(36).slice(2)}`
