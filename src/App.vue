@@ -247,19 +247,20 @@ const contentTitleDy = computed(() => 0)
             <div class="content-intro" :style="{ opacity: contentTitleA, transform: `translateY(${contentTitleDy}px)` }"></div>
             <article class="text-block">
               <h1 class="title">So stark hat sich das Klima in Ihrer Gemeinde verändert</h1>
-              <h2 class="subtitel">
+              <h2 id="article-subtitle" class="subtitel">
                 Die Schweiz gehört zu den Hotspots des Klimawandels. 
                 Eine Datenanalyse zeigt, wie sich die Temperaturen seit den 1960er-Jahren verändert haben — auch vor Ihrer Haustüre.
               </h2>
 
-            <!-- Progress-Leiste direkt darunter -->
+            <!-- Scroll-Progress-Bar -->
               <ScrollProgress
                 anchor="#article-subtitle"
                 height="3px"
                 color="#111"
-                track="rgba(2, 25, 72)"
+                track="rgba(2,25,72,.15)"
                 top="0"
               />
+
               <div class="author"> Anja Ruoss</div>
 
               <p>Klimawandel ist kein fernes Phänomen — ob in den Städten, wo Hitzeperioden spürbar zunehmen, oder in den Bergen, wo Lawinen, Murgänge und Steinschläge drohen: Die Auswirkungen sind vielfältig und direkt.</p>
