@@ -380,6 +380,7 @@ function selectByName(name){
   const k = keyForRaw(name); if(!k) { clearSelection(); return }
   const p = paths.value.find(x=>x.key===k); if(!p) { clearSelection(); return }
   selectedKey.value = k; centerOnKey(k, 1.8); updateInfoBoxPosition()
+  emit('gemeinde-selected', nameByKey.value.get(k) || k)
 }
 function keyForRaw(raw){ const k0=norm(raw); const k=nameAlias[k0]||k0; return featuresByKey.value.has(k)?k:null }
 </script>

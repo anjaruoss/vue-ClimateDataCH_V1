@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch } from "vue"
+import { ref, computed, watch, nextTick } from "vue"
 import * as d3 from 'd3'
 import ScrollProgress from "./components/ScrollProgress.vue"
 import ChMapSvg from "./components/ChMapSvg.vue"
@@ -69,9 +69,29 @@ async function checkGmData(name) {
   gmHasData.value = found
 }
 
+
+function focusGmLinieEl(retries = 10) {
+  if (!gmLinieEl.value) return
+  const el = gmLinieEl.value
+  const rect = el.getBoundingClientRect()
+  const inViewport = rect.width > 0 && rect.height > 0 && rect.top < window.innerHeight && rect.bottom > 0
+  if (inViewport) {
+    el.focus()
+    return
+  }
+  if (retries > 0) {
+    setTimeout(() => focusGmLinieEl(retries - 1), 50)
+  }
+}
+
 watch(gmSelectedName, (name) => {
-  if (name) gmLinieYear.value = startYear
-  checkGmData(name)
+  if (name) {
+    gmLinieYear.value = startYear
+    checkGmData(name)
+    nextTick(() => focusGmLinieEl())
+  } else {
+    checkGmData(name)
+  }
 }, { immediate: true })
 
 /* ===== Neutrale Bindings für vorhandene Styles ===== */
