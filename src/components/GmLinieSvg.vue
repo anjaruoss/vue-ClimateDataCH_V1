@@ -1,11 +1,12 @@
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import * as d3 from 'd3'
 
 /* ===== Props ===== */
 const props = defineProps({
   dataDir: { type: String, default: '/data' },
-  year:    { type: Number, default: null }
+  year:    { type: Number, default: null },
+  name:    { type: String, required: true }    // <— optional falls du dynamische Namen übergeben willst
 })
 
 /* ===== ViewBox/Layout ===== */
@@ -37,10 +38,7 @@ onBeforeUnmount(() => ro?.disconnect())
 const scale = computed(() => Math.min(frameW.value / vbW, frameH.value / vbH))
 const leftPx = computed(() => Math.round(20 * scale.value))
 const topPx  = computed(() => Math.round(14 * scale.value))
-
-/* Anschrift 20px tiefer */
 const hudOffsetPx = computed(() => Math.round(20 * scale.value))
-
 const titleFontPx    = computed(() => Math.round(16 * scale.value) + 'px')
 const subtitleFontPx = computed(() => Math.round(12 * scale.value) + 'px')
 const tickFontPx     = computed(() => Math.round(11 * scale.value) + 'px')
@@ -50,21 +48,22 @@ const rows = ref([])
 const data = ref([]) // [{year, avg}]
 const ready = computed(() => data.value.length > 1)
 
-const norm = (s) => (s || '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
-
-onMounted(async () => {
+async function loadData() {
   const csv = await d3.csv(`${props.dataDir}/lau_lvl_data_temperatures_ch.csv`, d3.autoType)
   rows.value = csv
   data.value = csv
     .filter(d =>
       d.CNTR_CODE === 'CH' &&
-      d.LAU_LABEL === 'Zermatt' &&
+      d.LAU_LABEL === props.name &&
       +d.year >= 1971 &&
       d.avg_year != null
     )
     .map(d => ({ year: +d.year, avg: +d.avg_year }))
     .sort((a, b) => d3.ascending(a.year, b.year))
-})
+}
+
+onMounted(loadData)
+watch(() => props.name, loadData)
 
 /* ===== Skalen ===== */
 const xDomain = computed(() => d3.extent(data.value, d => d.year) ?? [1971, 2018])
@@ -124,28 +123,26 @@ function cardinalSplinePath(points, tension = 0.15) {
   return path.join(' ')
 }
 
- /* ===== Datenbasirte Farbskala ===== */
- const globalExtent = computed(() => {
-   if (!rows.value?.length) return [0, 1]
-   const vals = rows.value
-     .filter(d =>
-       d.CNTR_CODE === 'CH' &&
-       d.avg_year != null &&
-       +d.year >= 1971 && +d.year <= 2018
+/* ===== Farbskala ===== */
+const globalExtent = computed(() => {
+  if (!rows.value?.length) return [0, 1]
+  const vals = rows.value
+    .filter(d =>
+      d.CNTR_CODE === 'CH' &&
+      d.avg_year != null &&
+      +d.year >= 1971 && +d.year <= 2018
     )
-     .map(d => +d.avg_year)
-   const ext = d3.extent(vals)
-   return (ext[0] == null) ? [0,1] : ext
- })
-
- const colorScaleVal = computed(() =>
-   d3.scaleSequential()
-     .domain(globalExtent.value) // <— gemeinsame Domain!
+    .map(d => +d.avg_year)
+  const ext = d3.extent(vals)
+  return (ext[0] == null) ? [0,1] : ext
+})
+const colorScaleVal = computed(() =>
+  d3.scaleSequential()
+    .domain(globalExtent.value)
     .interpolator(d3.interpolateTurbo)
- )
+)
 
-
-/* ===== Segmente (für Gradients) ===== */
+/* ===== Segmente (Gradient-Strokes) ===== */
 const segGradUID = `seg-${Math.random().toString(36).slice(2)}`
 const segments = computed(() => {
   const out = []
@@ -161,16 +158,14 @@ const segments = computed(() => {
   return out
 })
 
-/* ===== Aktuelles Jahr + Marker-Farbe (nach Wert) ===== */
+/* ===== Aktuelles Jahr + Marker ===== */
 const minYear = computed(() => xDomain.value[0])
 const maxYear = computed(() => xDomain.value[1])
-
 const chosenYear = computed(() => {
   if (!data.value.length) return null
   const y = (props.year ?? maxYear.value)
   return Math.min(maxYear.value, Math.max(minYear.value, Math.round(y)))
 })
-
 const cur = computed(() => {
   if (!data.value.length || chosenYear.value == null) return null
   let best = data.value[0], dbest = Math.abs(best.year - chosenYear.value)
@@ -183,7 +178,6 @@ const cur = computed(() => {
 const curPt = computed(() => (cur.value ? [xScale(cur.value.year), yScale(cur.value.avg)] : null))
 const curColor = computed(() => cur.value ? colorScaleVal.value(cur.value.avg) : '#888')
 
-/* ===== Helper ===== */
 function formatTemp(v, digits = 1) {
   if (v == null || Number.isNaN(v)) return ''
   const num = Math.abs(v).toFixed(digits)
@@ -198,10 +192,9 @@ function formatTemp(v, digits = 1) {
       :viewBox="`0 ${-headroomTop} ${vbW} ${vbH + headroomTop}`"
       preserveAspectRatio="xMidYMid meet"
     >
-      <!-- Hintergrund -->
       <rect :x="0" :y="-headroomTop" :width="vbW" :height="vbH + headroomTop" fill="#fff" />
 
-      <!-- Grosse Temperaturenanzeige + Jahr darunter -->
+      <!-- Temperatur + Jahr -->
       <text
         x="50%"
         :y="-headroomTop"
@@ -218,7 +211,7 @@ function formatTemp(v, digits = 1) {
         </tspan>
       </text>
 
-      <!-- Gradients: Ein Gradient pro Liniensegment (weiche Übergänge a->b) -->
+      <!-- Gradients -->
       <defs v-if="ready">
         <linearGradient
           v-for="s in segments"
@@ -249,7 +242,7 @@ function formatTemp(v, digits = 1) {
           </text>
         </g>
 
-        <!-- Datengesteuerte, segmentierte Linie mit Verlaufs-Stroke -->
+        <!-- Segmentierte Linie -->
         <g>
           <line
             v-for="s in segments"
@@ -264,7 +257,7 @@ function formatTemp(v, digits = 1) {
           />
         </g>
 
-        <!-- Highlight-Marker (aktuelles Jahr) -->
+        <!-- Marker -->
         <g v-if="curPt">
           <circle :cx="curPt[0]" :cy="curPt[1]" r="15" fill="#fff" :stroke="curColor" stroke-width="4.5" />
           <circle :cx="curPt[0]" :cy="curPt[1]" r="7.5" :fill="curColor" />
@@ -272,21 +265,14 @@ function formatTemp(v, digits = 1) {
       </g>
     </svg>
 
-    <!-- "Anschrift" der Grafik -->
-      <div
-        class="linien-title"
-        :style="{ left: leftPx + 'px', top: (topPx + hudOffsetPx + 40*scale) + 'px'}"
-      >
-        Zermatt · 1971–2018
-      </div>
-      <div
-        class="linien-subtitle"
-        :style="{ left: leftPx + 'px', top: (topPx + hudOffsetPx + 70*scale) + 'px'}"
-      >
-        Ø Jahrestemperatur
-      </div>
+    <!-- Titel/Subtitel -->
+    <div class="linien-title" :style="{ left: leftPx + 'px', top: (topPx + hudOffsetPx + 40*scale) + 'px'}">
+      {{ props.name }} · 1971–2018
     </div>
-
+    <div class="linien-subtitle" :style="{ left: leftPx + 'px', top: (topPx + hudOffsetPx + 70*scale) + 'px'}">
+      Ø Jahrestemperatur
+    </div>
+  </div>
 </template>
 
 <style scoped>

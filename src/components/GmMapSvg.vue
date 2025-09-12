@@ -1,4 +1,5 @@
 <script setup>
+const emit = defineEmits(['gemeinde-selected'])
 import { ref, onMounted, onBeforeUnmount, nextTick, computed } from 'vue'
 import * as d3 from 'd3'
 
@@ -67,7 +68,7 @@ const hudScaleLegend = computed(() => Math.max(0.6, Math.min(2.0, internalScale.
 const clamp = (x,a,b) => Math.min(b, Math.max(a, x))
 const legendBarW = computed(()=> Math.round(clamp(8   * hudScaleLegend.value, 10, 36)))
 const legendBarH = computed(()=> Math.round(clamp(140 * hudScaleLegend.value, 80, 300)))
-const legendFontPx = computed(()=> Math.round(clamp(12 * hudScaleLegend.value, 9, 18)) + 'px')
+const legendFontPx = computed(()=> Math.round(clamp(12 * hudScaleLegend.value, 10, 18)) + 'px')
 const legendId = `legend-${Math.random().toString(36).slice(2)}`
 function legendValue(p){ const t=p/100; return domainMax.value*(1-t)+domainMin.value*t }
 
@@ -307,6 +308,8 @@ function onSelect(p){
   selectedKey.value = p.key
   centerOnKey(p.key, 1.8)
   updateInfoBoxPosition()
+  // Emit event with the selected Gemeinde name or key
+  emit('gemeinde-selected', nameByKey.value.get(p.key) || p.key)
 }
 function updateInfoBoxPosition(){
   if (!selectedKey.value || !svgEl.value) return

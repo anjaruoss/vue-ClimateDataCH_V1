@@ -1,10 +1,12 @@
 <script setup>
-import { ref, computed } from "vue"
+import { ref, computed, watch } from "vue"
+import * as d3 from 'd3'
 import ScrollProgress from "./components/ScrollProgress.vue"
 import ChMapSvg from "./components/ChMapSvg.vue"
-import GmMapSvg from "./components/GmMapSvg.vue"
 import ZermattSvg from "./components/ZermattSvg.vue"
 import BiereSvg from "./components/BiereSvg.vue"
+import GmMapSvg from "./components/GmMapSvg.vue"
+import GmLinieSvg from "./components/GmLinieSvg.vue"
 
 // zentrales Scrubber-Composable
 import { useScrubber } from "./composables/Scrubber"
@@ -17,13 +19,19 @@ const endYear   = 2018
 const dataDir = "/data"
 const year    = ref(startYear)
 
+/*  Liniendiagramme Zermatt/Biere */
+const zermattYear = ref(startYear)
+const biereYear   = ref(startYear)
+
 /* GmMapSvg */
 const dataDirGm = "/data"
 const yearGm    = ref(2018)
 
-/*  Liniendiagramme  */
-const zermattYear = ref(startYear)
-const biereYear   = ref(startYear)
+/*  GmLinieSvg  */
+const gmSelectedName = ref(null)   // Name der aktuell gewählten Gemeinde (aus GmMapSvg)
+const gmHasData = ref(false)
+const gmLinieYear    = ref(startYear)  // eigener Scrubber-State fürs Gemeindediagramm
+const gmLinieEl      = ref(null)       // Frame-Container des GmLinieSvg (für Scrubber)
 
 /* Frame-Referenzen (Container-Elemente) */
 const mapEl     = ref(null)   // ChMapSvg Frame
@@ -35,6 +43,8 @@ const visualizations = [
   { key: 'map',     ref: mapEl,     year },            // nutzt gemeinsame Grenzen
   { key: 'zermatt', ref: zermattEl, year: zermattYear },
   { key: 'biere',   ref: biereEl,   year: biereYear   },
+  // dynamischees Linien-Diagramm für die ausgewählte Gemeinde
+  { key: 'gmline',  ref: gmLinieEl, year: gmLinieYear },
 ]
 
 // Aktiviert Scroll-/Touch-/Keyboard-Routing auf den zentriertesten Frame
@@ -47,6 +57,22 @@ useScrubber(visualizations, {
   tolRatioVp: 0.25,
   wheelIdleMs: 120
 })
+
+// Prüfe, ob es für die gewählte Gemeinde Daten gibt
+async function checkGmData(name) {
+  if (!name) {
+    gmHasData.value = false
+    return
+  }
+  const csv = await d3.csv(`${dataDirGm}/lau_lvl_data_temperatures_ch.csv`, d3.autoType)
+  const found = csv.some(d => d.CNTR_CODE === 'CH' && d.LAU_LABEL === name && +d.year >= 1971 && d.avg_year != null)
+  gmHasData.value = found
+}
+
+watch(gmSelectedName, (name) => {
+  if (name) gmLinieYear.value = startYear
+  checkGmData(name)
+}, { immediate: true })
 
 /* ===== Neutrale Bindings für vorhandene Styles ===== */
 const contentPullUp  = computed(() => "0px")
@@ -84,11 +110,11 @@ const contentTitleDy = computed(() => 0)
               <p>Die folgende Karte zeigt, wie sich die durchschnittlichen Jahrestemperaturen von 1971 bis 2018 in allen Schweizer Gemeinden entwickelt haben.</p>
 
               <!-- ChMapSvg mit Scroll -->
-              <div class="svg-frame" ref="mapEl" tabindex="0" aria-label="Karten-Zeitnavigation" style="outline:none; position:relative;">
+              <div class="svg-frame" ref="mapEl" tabindex="0" style="outline:none; position:relative;">
                 <ChMapSvg :year="year" :data-dir="dataDir" />
               </div>
               <div class="bildlegende">
-                Die Karte zeigt die Entwicklung der mittleren Jahrestemperaturen in der Schweiz von 1971 bis 2018. Grundlage sind modellbasierte Schätzungen aus dem europäischen Klimadatenprojekt Copernicus in Zusammenarbeit mit dem Europäischen Zentrum für mittelfristige Wettervorhersage (ECMWF).
+                Die Karte zeigt die Entwicklung der mittleren Jahrestemperaturen in der Schweiz von 1971 bis 2018.
                 <a href="https://cds.climate.copernicus.eu/datasets/reanalysis-uerra-europe-single-levels?tab=overview" target="_blank" rel="noopener" style="font-style: italic;">Quelle: UERRA-Regionalreanalyse</a>
               </div>
 
@@ -99,14 +125,14 @@ const contentTitleDy = computed(() => 0)
               <p> Ein Beispiel dafür ist Zermatt. Im beliebten Walliser Tourismusort am Fusse des Matterhorns ist die durchschnittliche Jahrestemperatur von <strong> −3.9 °C (1971) auf −2.5 °C (2018) </strong> gestiegen — um <strong> rund 1.4 °C</strong>.</p>
 
               <!-- Liniendiagramm Zermatt mit Scroll -->
-              <div class="linien-frame" ref="zermattEl" tabindex="0" aria-label="Zeitnavigation Diagramm Zermatt" style="outline:none;">
+              <div class="linien-frame" ref="zermattEl" tabindex="0" style="outline:none;">
                 <ZermattSvg :year="zermattYear" />
               </div>
 
               <p> Im Gegensatz dazu steht die Gemeinde Bière im Kanton Waadt, wo sich die mittlere Jahrestemperatur im selben Zeitraum von <strong> 9.2 °C auf 10.1 °C </strong> erhöhte — ein Anstieg um <strong>rund 1.0 °C </strong>.</p>
 
               <!-- Liniendiagramm Bière mit Scroll -->
-              <div class="linien-frame" ref="biereEl" tabindex="0" aria-label="Zeitnavigation Diagramm Bière" style="outline:none;">
+              <div class="linien-frame" ref="biereEl" tabindex="0" style="outline:none;">
                 <BiereSvg :year="biereYear" />
               </div>
 
@@ -123,11 +149,24 @@ const contentTitleDy = computed(() => 0)
 
               <!-- GmMapSvg -->
               <div class="map-frame">
-                <GmMapSvg :data-dir="dataDirGm" :year="yearGm" />
+                <GmMapSvg
+                  :data-dir="dataDirGm"
+                  :year="yearGm"
+                  @gemeinde-selected="gmSelectedName = $event"
+                />
               </div>
               <div class="bildlegende">
-                Die Karte zeigt, um wie viele Grad Celsius sich die mittlere Jahrestemperatur in den Schweizer Gemeinden zwischen den 1960er-Jahren (1961–1970) und der Periode 2009–2018 verändert hat. Grundlage sind Schätzungen aus dem Copernicus-Programm und vom Europäischen Zentrum für mittelfristige Wettervorhersage (ECMWF).
+                Die Karte zeigt, um wie viele Grad Celsius sich die mittlere Jahrestemperatur in den Schweizer Gemeinden zwischen den 1960er-Jahren (1961–1970) und der Periode 2009–2018 verändert hat.
                 <a href="https://cds.climate.copernicus.eu/datasets/reanalysis-uerra-europe-single-levels?tab=overview" target="_blank" rel="noopener" style="font-style: italic;">Quelle: UERRA-Regionalreanalyse</a>
+              </div>
+
+              <!--  Linien-SVG unterhalb: nur wenn eine Gemeinde ausgewählt ist und Daten vorhanden sind -->
+              <div v-if="gmSelectedName && gmHasData" class="linien-frame" ref="gmLinieEl" tabindex="0" style="outline:none;">
+                <GmLinieSvg
+                  :name="gmSelectedName"
+                  :year="gmLinieYear"
+                  :data-dir="dataDirGm"
+                />
               </div>
             </article>
           </div>
