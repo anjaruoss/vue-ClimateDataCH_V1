@@ -247,7 +247,7 @@ const contentTitleDy = computed(() => 0)
             <div class="content-intro" :style="{ opacity: contentTitleA, transform: `translateY(${contentTitleDy}px)` }"></div>
             <article class="text-block">
               <h1 class="title">So stark hat sich das Klima in Ihrer Gemeinde verändert</h1>
-              <h2 id="article-subtitle" class="subtitel">
+              <h2 id="article-subtitle" class="subtitle">
                 Die Schweiz gehört zu den Hotspots des Klimawandels. 
                 Eine Datenanalyse zeigt, wie sich die Temperaturen seit den 1960er-Jahren verändert haben — auch vor Ihrer Haustüre.
               </h2>
@@ -268,12 +268,12 @@ const contentTitleDy = computed(() => 0)
               <p>Die folgende Karte zeigt, wie sich die durchschnittlichen Jahrestemperaturen von 1971 bis 2018 in allen Schweizer Gemeinden entwickelt haben.</p>
 
               <!-- ChMapSvg mit Scroll -->
-              <div class="svg-frame" ref="mapEl" tabindex="0" aria-label="Karten-Zeitnavigation" style="outline:none; position:relative;">
+              <div class="map-frame" >
                 <ChMapSvg :year="year" :data-dir="dataDir" />
+              </div>
                 <div class="bildlegende">
                   Die Karte zeigt die Entwicklung der mittleren Jahrestemperaturen in der Schweiz von 1971 bis 2018. Grundlage sind modellbasierte Schätzungen aus dem europäischen Klimadatenprojekt Copernicus in Zusammenarbeit mit dem Europäischen Zentrum für mittelfristige Wettervorhersage (ECMWF).
                   <a href="https://cds.climate.copernicus.eu/datasets/reanalysis-uerra-europe-single-levels?tab=overview" target="_blank" rel="noopener" style="font-style: italic;">Quelle: UERRA-Regionalreanalyse</a>
-                </div>
               </div>
 
               <p> Laut einer europaweiten Analyse des <a href="https://www.europeandatajournalism.eu/" target="_blank" rel="noopener">European Data Journalism Network (EDJNet)</a> liegt die Zunahme in allen Landesteilen über einem Grad, in vielen Regionen deutlich darüber.</p>
@@ -283,14 +283,14 @@ const contentTitleDy = computed(() => 0)
               <p> Ein Beispiel dafür ist Zermatt. Im beliebten Walliser Tourismusort am Fusse des Matterhorns ist die durchschnittliche Jahrestemperatur von −3.9 °C (1971) auf −2.5 °C (2018) gestiegen — ein Plus von rund 1.4 °C.</p>
 
               <!-- Liniendiagramm Zermatt mit Scroll -->
-              <div class="zermatt-frame" ref="zermattEl" tabindex="0" aria-label="Zeitnavigation Diagramm Zermatt" style="outline:none;">
+              <div class="linien-frame" ref="zermattEl" tabindex="0" aria-label="Zeitnavigation Diagramm Zermatt" style="outline:none;">
                 <ZermattSvg :year="zermattYear" />
               </div>
 
               <p> Im Gegensatz dazu steht die Gemeinde Bière im Kanton Waadt, wo sich die mittlere Jahrestemperatur im selben Zeitraum von 9.2 °C auf 10.1 °C erhöhte — ein Anstieg um rund 1.0 °C.</p>
 
               <!-- Liniendiagramm Bière mit Scroll -->
-              <div class="biere-frame" ref="biereEl" tabindex="0" aria-label="Zeitnavigation Diagramm Bière" style="outline:none;">
+              <div class="linien-frame" ref="biereEl" tabindex="0" aria-label="Zeitnavigation Diagramm Bière" style="outline:none;">
                 <BiereSvg :year="biereYear" />
               </div>
 
@@ -329,6 +329,9 @@ const contentTitleDy = computed(() => 0)
   --headline-font: "Merriweather", "Source Serif 4", ui-serif, Georgia, "Times New Roman", Times, serif;
   --text-font: "Source Serif 4", ui-serif, Georgia, "Times New Roman", Times, serif;
   --text-color: #111;
+  --s-1: 16px;
+  --s-2: 24px;
+  --s-3: 32px;
 }
 
 html, body, #app{
@@ -350,6 +353,7 @@ html, body, #app{
   color: #000;
   margin: 0 0 0.4em 0;
   text-align:center;
+  margin-bottom: var(--s-1);
 }
 
 h1, h2, h3{
@@ -359,6 +363,8 @@ h1, h2, h3{
   letter-spacing: 0.2px;
   color: #000;
   margin: 0 0 0.4em 0;
+  margin-bottom: var(--s-2);
+  margin-top: var(--s-2);
 }
 
 /* feinere Skala, an NZZ angelehnt */
@@ -366,19 +372,19 @@ h1, .title{ font-size: clamp(28px, 4.2vw, 46px); }
 h2{ font-size: clamp(18px, 2.6vw, 26px); font-weight: 700; }
 h3{ font-size: clamp(16px, 2.1vw, 22px); font-weight: 700; }
 
-.subtitel{
-  font-family: var(--text-font);    /* Unterzeile als Fließtext-Stimme */
+.subtitle{
+  font-family: var(--text-font);    /* Unterzeile als Fliesstext */
   font-weight: 400;
   line-height: 1.6;
-  margin-top: 8px;
   font-size: clamp(14px, 2.2vw, 20px);
   color: #000;
   text-align:center;
+  margin-bottom: var(--s-2);
 }
 
 .text-block p{
   margin: 0 0 1.05em 0;
-  hyphens: auto;                    /* schöner Blocksatz-Fluss */
+  hyphens: auto; /*  für Blocksatz-Fluss */
 }
 
 /* Autor */
@@ -390,10 +396,12 @@ h3{ font-size: clamp(16px, 2.1vw, 22px); font-weight: 700; }
   color: #555;
 }
 
-.zermatt-frame svg {
+.linien-frame {
   width: 600px;
   height: auto;
   max-width: none;
+  margin-bottom: var(--s-3);
+  margin-top: var(--s-3);
 }
 
 /* Rahmen rund um weisse Content-Karte */
@@ -428,14 +436,13 @@ h3{ font-size: clamp(16px, 2.1vw, 22px); font-weight: 700; }
   color: #213547; /* kannst du auf #111 ziehen, wenn du es noch „druckiger“ willst */
 }
 
-.text-block h2{ margin: 0 0 8px; }
-
 /* Bildlegende */
 .bildlegende{
   margin-top: 8px;
   font-size: 11px;
   color:#444;
   text-align:center;
+  margin-bottom: var(--s-3);
 }
 
 /* Karten-Frames */
@@ -445,16 +452,7 @@ h3{ font-size: clamp(16px, 2.1vw, 22px); font-weight: 700; }
   border-radius: 10px;
   overflow: hidden;
   background: #fff;
-}
-.svg-frame{
-  width: 100%;
-  aspect-ratio: 1200 / 740;
-  background: #fff;
-  position: relative;
-  z-index: 1;
-  overflow: visible;
-  margin: 0 !important;
-  padding: 0 !important;
-  border-radius: 6px;
+  margin-bottom: var(--s-3);
+  margin-top: var(--s-3);
 }
 </style>
