@@ -1,113 +1,3 @@
-<template>
-  <div class="chart-wrap" ref="wrapEl">
-    <svg
-      class="chart-svg"
-      :viewBox="`0 ${-headroomTop} ${vbW} ${vbH + headroomTop}`"
-      preserveAspectRatio="xMidYMid meet"
-    >
-      <!-- Hintergrund -->
-      <rect :x="0" :y="-headroomTop" :width="vbW" :height="vbH + headroomTop" fill="#ffffff" />
-
-      <!-- Grosse Temperaturenanzeige + Jahr darunter -->
-      <text
-        x="50%"
-        :y="-headroomTop"
-        dominant-baseline="hanging"
-        text-anchor="middle"
-        font-size="70"
-        font-weight="700"
-        :fill="curColor"
-        style="font-family: inherit; letter-spacing: 1.5px;"
-      >
-        {{ cur ? formatTemp(cur.avg, 1) : '' }}
-        <tspan x="50%" dy="2.5em" font-size="32" font-weight="700">
-          {{ cur ? cur.year : '' }}
-        </tspan>
-      </text>
-
-      <!-- Gradients: EIN Gradient pro Liniensegment (weiche Übergänge a->b) -->
-      <defs v-if="ready">
-        <linearGradient
-          v-for="s in segments"
-          :key="`g-${segGradUID}-${s.i}`"
-          :id="`seg-grad-${segGradUID}-${s.i}`"
-          gradientUnits="userSpaceOnUse"
-          :x1="s.x1" :y1="s.y1" :x2="s.x2" :y2="s.y2"
-        >
-          <stop offset="0" :stop-color="colorScaleVal(s.a.avg)" />
-          <stop offset="1" :stop-color="colorScaleVal(s.b.avg)" />
-        </linearGradient>
-      </defs>
-
-      <!-- Grid + Achsen -->
-      <g v-if="ready">
-        <g v-for="(t, i) in yTicks" :key="'y-'+i">
-          <line :x1="plotL" :x2="plotR" :y1="yScale(t)" :y2="yScale(t)" stroke="#000" opacity="0.08"/>
-          <text :x="plotL - 10" :y="yScale(t)" text-anchor="end" dominant-baseline="middle" :font-size="tickFontPx * 1.3" fill="#4b4b4b">
-            {{ t.toFixed(0) }}°C
-          </text>
-        </g>
-
-        <line :x1="plotL" :x2="plotR" :y1="plotB" :y2="plotB" stroke="#000" opacity="0.15"/>
-        <g v-for="(yr, i) in xTicks" :key="`x-${i}`">
-          <line :x1="xScale(yr)" :x2="xScale(yr)" :y1="plotB" :y2="plotB + 6" stroke="#000" opacity="0.4"/>
-          <text :x="xScale(yr)" :y="plotB + 28" text-anchor="middle" :font-size="tickFontPx * 1.3" fill="#4b4b4b">
-            {{ yr }}
-          </text>
-        </g>
-
-        <!-- Optionale, helle Unterlage für perfekte Übergänge -->
-        <path
-          :d="smoothPath"
-          stroke="#000"
-          opacity="0.06"
-          stroke-width="7"
-          fill="none"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        />
-
-        <!-- Datengesteuerte, segmentierte Linie mit Verlaufs-Stroke -->
-        <g>
-          <line
-            v-for="s in segments"
-            :key="`seg-${s.i}`"
-            :x1="s.x1" :y1="s.y1"
-            :x2="s.x2" :y2="s.y2"
-            :stroke="`url(#seg-grad-${segGradUID}-${s.i})`"
-            stroke-width="7"
-            stroke-linecap="round"
-            fill="none"
-            opacity="0.95"
-          />
-        </g>
-
-        <!-- Highlight-Marker (aktuelles Jahr) -->
-        <g v-if="curPt">
-          <circle :cx="curPt[0]" :cy="curPt[1]" r="8.5" fill="#fff" :stroke="curColor" stroke-width="3.5" />
-          <circle :cx="curPt[0]" :cy="curPt[1]" r="3.5" :fill="curColor" />
-        </g>
-      </g>
-    </svg>
-
-    <!-- "Anschrift" der Grafik -->
-    <div class="hud">
-      <div
-        class="title"
-        :style="{ left: leftPx + 'px', top: (topPx + hudOffsetPx + 40*scale) + 'px', fontSize: titleFontPx }"
-      >
-        Zermatt · 1971–2018
-      </div>
-      <div
-        class="subtitle"
-        :style="{ left: leftPx + 'px', top: (topPx + hudOffsetPx + 70*scale) + 'px', fontSize: subtitleFontPx }"
-      >
-        Ø Jahrestemperatur
-      </div>
-    </div>
-  </div>
-</template>
-
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import * as d3 from 'd3'
@@ -234,11 +124,26 @@ function cardinalSplinePath(points, tension = 0.15) {
   return path.join(' ')
 }
 
-/* ===== Farbskala (wertbasiert) ===== */
-const valueExtent = computed(() => d3.extent(data.value, d => d.avg) ?? [0, 1])
-const colorScaleVal = computed(() =>
-  d3.scaleSequential().domain(valueExtent.value).interpolator(d3.interpolateTurbo)
-)
+ /* ===== Datenbasirte Farbskala ===== */
+ const globalExtent = computed(() => {
+   if (!rows.value?.length) return [0, 1]
+   const vals = rows.value
+     .filter(d =>
+       d.CNTR_CODE === 'CH' &&
+       d.avg_year != null &&
+       +d.year >= 1971 && +d.year <= 2018
+    )
+     .map(d => +d.avg_year)
+   const ext = d3.extent(vals)
+   return (ext[0] == null) ? [0,1] : ext
+ })
+
+ const colorScaleVal = computed(() =>
+   d3.scaleSequential()
+     .domain(globalExtent.value) // <— gemeinsame Domain!
+    .interpolator(d3.interpolateTurbo)
+ )
+
 
 /* ===== Segmente (für Gradients) ===== */
 const segGradUID = `seg-${Math.random().toString(36).slice(2)}`
@@ -286,6 +191,116 @@ function formatTemp(v, digits = 1) {
   return (v < 0 ? '−' : '') + num + '°C'
 }
 </script>
+
+<template>
+  <div class="chart-wrap" ref="wrapEl">
+    <svg
+      class="chart-svg"
+      :viewBox="`0 ${-headroomTop} ${vbW} ${vbH + headroomTop}`"
+      preserveAspectRatio="xMidYMid meet"
+    >
+      <!-- Hintergrund -->
+      <rect :x="0" :y="-headroomTop" :width="vbW" :height="vbH + headroomTop" fill="#ffffff" />
+
+      <!-- Grosse Temperaturenanzeige + Jahr darunter -->
+      <text
+        x="50%"
+        :y="-headroomTop"
+        dominant-baseline="hanging"
+        text-anchor="middle"
+        font-size="70"
+        font-weight="700"
+        :fill="curColor"
+        style="font-family: inherit; letter-spacing: 1.5px;"
+      >
+        {{ cur ? formatTemp(cur.avg, 1) : '' }}
+        <tspan x="50%" dy="2.5em" font-size="32" font-weight="700">
+          {{ cur ? cur.year : '' }}
+        </tspan>
+      </text>
+
+      <!-- Gradients: EIN Gradient pro Liniensegment (weiche Übergänge a->b) -->
+      <defs v-if="ready">
+        <linearGradient
+          v-for="s in segments"
+          :key="`g-${segGradUID}-${s.i}`"
+          :id="`seg-grad-${segGradUID}-${s.i}`"
+          gradientUnits="userSpaceOnUse"
+          :x1="s.x1" :y1="s.y1" :x2="s.x2" :y2="s.y2"
+        >
+          <stop offset="0" :stop-color="colorScaleVal(s.a.avg)" />
+          <stop offset="1" :stop-color="colorScaleVal(s.b.avg)" />
+        </linearGradient>
+      </defs>
+
+      <!-- Grid + Achsen -->
+      <g v-if="ready">
+        <g v-for="(t, i) in yTicks" :key="'y-'+i">
+          <line :x1="plotL" :x2="plotR" :y1="yScale(t)" :y2="yScale(t)" stroke="#000" opacity="0.08"/>
+          <text :x="plotL - 10" :y="yScale(t)" text-anchor="end" dominant-baseline="middle" :font-size="tickFontPx * 1.3" fill="#4b4b4b">
+            {{ t.toFixed(0) }}°C
+          </text>
+        </g>
+
+        <line :x1="plotL" :x2="plotR" :y1="plotB" :y2="plotB" stroke="#000" opacity="0.15"/>
+        <g v-for="(yr, i) in xTicks" :key="`x-${i}`">
+          <line :x1="xScale(yr)" :x2="xScale(yr)" :y1="plotB" :y2="plotB + 6" stroke="#000" opacity="0.4"/>
+          <text :x="xScale(yr)" :y="plotB + 28" text-anchor="middle" :font-size="tickFontPx * 1.3" fill="#4b4b4b">
+            {{ yr }}
+          </text>
+        </g>
+
+        <!-- Optionale, helle Unterlage für perfekte Übergänge -->
+        <path
+          :d="smoothPath"
+          stroke="#000"
+          opacity="0.06"
+          stroke-width="7"
+          fill="none"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+
+        <!-- Datengesteuerte, segmentierte Linie mit Verlaufs-Stroke -->
+        <g>
+          <line
+            v-for="s in segments"
+            :key="`seg-${s.i}`"
+            :x1="s.x1" :y1="s.y1"
+            :x2="s.x2" :y2="s.y2"
+            :stroke="`url(#seg-grad-${segGradUID}-${s.i})`"
+            stroke-width="7"
+            stroke-linecap="round"
+            fill="none"
+            opacity="0.95"
+          />
+        </g>
+
+        <!-- Highlight-Marker (aktuelles Jahr) -->
+        <g v-if="curPt">
+          <circle :cx="curPt[0]" :cy="curPt[1]" r="8.5" fill="#fff" :stroke="curColor" stroke-width="3.5" />
+          <circle :cx="curPt[0]" :cy="curPt[1]" r="3.5" :fill="curColor" />
+        </g>
+      </g>
+    </svg>
+
+    <!-- "Anschrift" der Grafik -->
+    <div class="hud">
+      <div
+        class="title"
+        :style="{ left: leftPx + 'px', top: (topPx + hudOffsetPx + 40*scale) + 'px', fontSize: titleFontPx }"
+      >
+        Zermatt · 1971–2018
+      </div>
+      <div
+        class="subtitle"
+        :style="{ left: leftPx + 'px', top: (topPx + hudOffsetPx + 70*scale) + 'px', fontSize: subtitleFontPx }"
+      >
+        Ø Jahrestemperatur
+      </div>
+    </div>
+  </div>
+</template>
 
 <style scoped>
 .chart-wrap { position: relative; width: 100%; height: 100%; }
