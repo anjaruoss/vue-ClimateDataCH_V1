@@ -58,7 +58,7 @@ onMounted(async () => {
   data.value = csv
     .filter(d =>
       d.CNTR_CODE === 'CH' &&
-      d.LAU_LABEL === 'Biere' &&
+      norm(d.LAU_LABEL) === 'biere' &&
       +d.year >= 1971 &&
       d.avg_year != null
     )
@@ -124,7 +124,7 @@ function cardinalSplinePath(points, tension = 0.15) {
   return path.join(' ')
 }
 
- /* ===== Datenbasirte Farbskala ===== */
+/* ===== Datenbasirte Farbskala ===== */
  const globalExtent = computed(() => {
    if (!rows.value?.length) return [0, 1]
    const vals = rows.value
@@ -137,13 +137,6 @@ function cardinalSplinePath(points, tension = 0.15) {
    const ext = d3.extent(vals)
    return (ext[0] == null) ? [0,1] : ext
  })
-
- const colorScaleVal = computed(() =>
-   d3.scaleSequential()
-     .domain(globalExtent.value) // <— gemeinsame Domain!
-    .interpolator(d3.interpolateTurbo)
- )
-
 
 /* ===== Segmente (für Gradients) ===== */
 const segGradUID = `seg-${Math.random().toString(36).slice(2)}`
@@ -184,6 +177,7 @@ const curPt = computed(() => (cur.value ? [xScale(cur.value.year), yScale(cur.va
 const curColor = computed(() => cur.value ? colorScaleVal.value(cur.value.avg) : '#888')
 
 /* ===== Helper ===== */
+/** Ausgabe OHNE führendes Plus, aber mit Minus falls < 0, inkl. °C  */
 function formatTemp(v, digits = 1) {
   if (v == null || Number.isNaN(v)) return ''
   const num = Math.abs(v).toFixed(digits)
