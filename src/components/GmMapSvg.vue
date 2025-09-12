@@ -602,6 +602,7 @@ path.is-selected{ stroke:#000; stroke-width:1.6; filter:drop-shadow(0 0 3px rgba
   outline:none; font-size:calc(15px * var(--uiScale));
   background:rgba(237, 236, 236, 0.92); backdrop-filter:blur(4px);
 }
+
 .gm-wrap.is-expanded .search-input{
   font-size: clamp(12px, calc(16px * var(--uiScale)), 18px);
   padding: calc(8px * var(--uiScale)) calc(14px * var(--uiScale));
