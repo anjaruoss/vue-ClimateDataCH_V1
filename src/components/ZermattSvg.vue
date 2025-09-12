@@ -277,8 +277,8 @@ function formatTemp(v, digits = 1) {
 
         <!-- Highlight-Marker (aktuelles Jahr) -->
         <g v-if="curPt">
-          <circle :cx="curPt[0]" :cy="curPt[1]" r="8.5" fill="#fff" :stroke="curColor" stroke-width="3.5" />
-          <circle :cx="curPt[0]" :cy="curPt[1]" r="3.5" :fill="curColor" />
+          <circle :cx="curPt[0]" :cy="curPt[1]" r="15" fill="#fff" :stroke="curColor" stroke-width="4.5" />
+          <circle :cx="curPt[0]" :cy="curPt[1]" r="7.5" :fill="curColor" />
         </g>
       </g>
     </svg>
