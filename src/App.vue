@@ -264,11 +264,11 @@ const contentTitleDy = computed(() => 0)
               <div class="author"> Anja Ruoss</div>
 
               <p>Klimawandel ist kein fernes Phänomen — ob in den Städten, wo Hitzeperioden spürbar zunehmen, oder in den Bergen, wo Lawinen, Murgänge und Steinschläge drohen: Die Auswirkungen sind vielfältig und direkt.</p>
-              <p>Seit Beginn der Industrialisierung hat sich die Erde im Schnitt um rund 1,3 Grad erwärmt. In der Schweiz liegt dieser Wert sogar bei 2,9 Grad. Damit gehört das Land zu den Hotspots des Klimawandels. Gründe dafür sind unter anderem die geografische Lage im Herzen Europas und die Sensibilität der Alpenregion.</p>
+              <p>Seit Beginn der Industrialisierung hat sich die Erde im Schnitt um rund 1,3 Grad erwärmt. In der Schweiz liegt dieser Wert sogar <strong> bei 2,9 Grad </strong>. Damit gehört das Land zu den Hotspots des Klimawandels. Gründe dafür sind unter anderem die geografische Lage im Herzen Europas und die Sensibilität der Alpenregion.</p>
               <p>Die folgende Karte zeigt, wie sich die durchschnittlichen Jahrestemperaturen von 1971 bis 2018 in allen Schweizer Gemeinden entwickelt haben.</p>
 
               <!-- ChMapSvg mit Scroll -->
-              <div class="map-frame" >
+              <div class="svg-frame" ref="mapEl" tabindex="0" aria-label="Karten-Zeitnavigation" style="outline:none; position:relative;">
                 <ChMapSvg :year="year" :data-dir="dataDir" />
               </div>
                 <div class="bildlegende">
@@ -280,14 +280,14 @@ const contentTitleDy = computed(() => 0)
               <p> Warum steigt die Temperatur in manchen Gemeinden schneller als in anderen? Mehrere Faktoren spielen zusammen: Hohe Bevölkerungsdichte und intensive Bodennutzung führen oft zu einem Wärmeinseleffekt. Gleichzeitig sind Bergregionen stark betroffen, wo steigende Temperaturen zu weniger Schneefall und auftauendem Permafrost führen.</p>
 
               <h3>Zwei Gemeinden, zwei Geschichten</h3>
-              <p> Ein Beispiel dafür ist Zermatt. Im beliebten Walliser Tourismusort am Fusse des Matterhorns ist die durchschnittliche Jahrestemperatur von −3.9 °C (1971) auf −2.5 °C (2018) gestiegen — ein Plus von rund 1.4 °C.</p>
+              <p> Ein Beispiel dafür ist Zermatt. Im beliebten Walliser Tourismusort am Fusse des Matterhorns ist die durchschnittliche Jahrestemperatur von <strong> −3.9 °C (1971) auf −2.5 °C (2018) </strong> gestiegen — um <strong> rund 1.4 °C</strong>.</p>
 
               <!-- Liniendiagramm Zermatt mit Scroll -->
               <div class="linien-frame" ref="zermattEl" tabindex="0" aria-label="Zeitnavigation Diagramm Zermatt" style="outline:none;">
                 <ZermattSvg :year="zermattYear" />
               </div>
 
-              <p> Im Gegensatz dazu steht die Gemeinde Bière im Kanton Waadt, wo sich die mittlere Jahrestemperatur im selben Zeitraum von 9.2 °C auf 10.1 °C erhöhte — ein Anstieg um rund 1.0 °C.</p>
+              <p> Im Gegensatz dazu steht die Gemeinde Bière im Kanton Waadt, wo sich die mittlere Jahrestemperatur im selben Zeitraum von <strong> 9.2 °C auf 10.1 °C </strong> erhöhte — ein Anstieg um <strong>rund 1.0 °C </strong>.</p>
 
               <!-- Liniendiagramm Bière mit Scroll -->
               <div class="linien-frame" ref="biereEl" tabindex="0" aria-label="Zeitnavigation Diagramm Bière" style="outline:none;">
@@ -302,7 +302,8 @@ const contentTitleDy = computed(() => 0)
               <p> Die Diagramme machen sichtbar, wie sich viele einzelne Jahre zu einem klaren langfristigen Trend summieren.</p>
 
               <h3>Was bedeutet das für Ihre Gemeinde?</h3>
-              <p> Das Projekt «Glocal Climate Change» hat Temperaturdaten von mehr als 100'000 europäischen Gemeinden ausgewertet. Für jede Gemeinde wurde die Durchschnittstemperatur der 1960er-Jahre mit jener des Zeitraums 2009–2018 verglichen. So lässt sich erkennen, wo der Klimawandel besonders stark spürbar ist – und wie Ihre eigene Gemeinde im landesweiten Vergleich abschneidet.</p>
+              <p> Das Projekt «Glocal Climate Change» hat Temperaturdaten von mehr als 100'000 europäischen Gemeinden ausgewertet. 
+                  Für jede Gemeinde wurde <strong> Durchschnittstemperatur der 1960er-Jahre mit jener des Zeitraums 2009–2018 </strong> verglichen. So lässt sich erkennen, wo der Klimawandel besonders stark spürbar ist – und wie Ihre eigene Gemeinde im landesweiten Vergleich abschneidet.</p>
 
               <!-- GmMapSvg -->
               <div class="map-frame">
@@ -455,5 +456,17 @@ h3{ font-size: clamp(16px, 2.1vw, 22px); font-weight: 700; }
   background: #fff;
   margin-bottom: var(--s-3);
   margin-top: var(--s-3);
+}
+
+.svg-frame{
+  width: 100%;
+  aspect-ratio: 1200 / 740;
+  background: #fff;
+  position: relative;
+  z-index: 1;
+  overflow: visible;
+  margin: 0 !important;
+  padding: 0 !important;
+  border-radius: 6px;
 }
 </style>
