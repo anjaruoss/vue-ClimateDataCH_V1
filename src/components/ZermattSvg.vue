@@ -184,7 +184,6 @@ const curPt = computed(() => (cur.value ? [xScale(cur.value.year), yScale(cur.va
 const curColor = computed(() => cur.value ? colorScaleVal.value(cur.value.avg) : '#888')
 
 /* ===== Helper ===== */
-/** Ausgabe OHNE führendes Plus, aber mit Minus falls < 0, inkl. °C  */
 function formatTemp(v, digits = 1) {
   if (v == null || Number.isNaN(v)) return ''
   const num = Math.abs(v).toFixed(digits)

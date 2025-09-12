@@ -1,3 +1,196 @@
+<script setup>
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import * as d3 from 'd3'
+
+/* ===== Props ===== */
+const props = defineProps({
+  dataDir: { type: String, default: '/data' },
+  year:    { type: Number, default: null }
+})
+
+/* ===== ViewBox/Layout ===== */
+const vbW = 1160
+const vbH = 470
+const margin = { top: 92, right: 28, bottom: 48, left: 60 }
+const plotL = margin.left
+const plotR = vbW - margin.right
+const plotT = margin.top
+const plotB = vbH - margin.bottom
+const plotW = plotR - plotL
+const plotH = plotB - plotT
+const headroomTop = 20
+
+/* ===== Responsive HUD ===== */
+const wrapEl = ref(null)
+const frameW = ref(vbW), frameH = ref(vbH)
+let ro
+onMounted(() => {
+  ro = new ResizeObserver(([e]) => {
+    if (!e) return
+    frameW.value = e.contentRect.width || vbW
+    frameH.value = e.contentRect.height || vbH
+  })
+  if (wrapEl.value) ro.observe(wrapEl.value)
+})
+onBeforeUnmount(() => ro?.disconnect())
+
+const scale = computed(() => Math.min(frameW.value / vbW, frameH.value / vbH))
+const leftPx = computed(() => Math.round(20 * scale.value))
+const topPx  = computed(() => Math.round(14 * scale.value))
+
+/* Anschrift 20px tiefer */
+const hudOffsetPx = computed(() => Math.round(20 * scale.value))
+
+const titleFontPx    = computed(() => Math.round(16 * scale.value) + 'px')
+const subtitleFontPx = computed(() => Math.round(12 * scale.value) + 'px')
+const tickFontPx     = computed(() => Math.round(11 * scale.value) + 'px')
+
+/* ===== Daten laden & filtern ===== */
+const rows = ref([])
+const data = ref([]) // [{year, avg}]
+const ready = computed(() => data.value.length > 1)
+
+const norm = (s) => (s || '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
+
+onMounted(async () => {
+  const csv = await d3.csv(`${props.dataDir}/lau_lvl_data_temperatures_ch.csv`, d3.autoType)
+  rows.value = csv
+  data.value = csv
+    .filter(d =>
+      d.CNTR_CODE === 'CH' &&
+      d.LAU_LABEL === 'Biere' &&
+      +d.year >= 1971 &&
+      d.avg_year != null
+    )
+    .map(d => ({ year: +d.year, avg: +d.avg_year }))
+    .sort((a, b) => d3.ascending(a.year, b.year))
+})
+
+/* ===== Skalen ===== */
+const xDomain = computed(() => d3.extent(data.value, d => d.year) ?? [1971, 2018])
+const yDomain = computed(() => {
+  const ext = d3.extent(data.value, d => d.avg)
+  if (!ext || ext[0] == null) return [0, 1]
+  const pad = Math.max(1, (ext[1] - ext[0]) * 0.1)
+  return [Math.floor(ext[0] - pad), Math.ceil(ext[1] + pad)]
+})
+
+function xScale(year) {
+  const [a, b] = xDomain.value
+  return plotL + ((year - a) / (b - a)) * plotW
+}
+function yScale(v) {
+  const [y0, y1] = yDomain.value
+  const t = (v - y0) / (y1 - y0)
+  return plotB - t * plotH
+}
+
+/* ===== Ticks ===== */
+const xTicks = computed(() => {
+  const [a, b] = xDomain.value
+  const out = []
+  for (let y = Math.ceil(a / 5) * 5; y <= b; y += 5) out.push(y)
+  return out
+})
+const yTicks = computed(() => {
+  const [y0, y1] = yDomain.value
+  const step = Math.max(1, Math.round((y1 - y0) / 6))
+  const out = []
+  for (let y = Math.ceil(y0); y <= Math.floor(y1); y += step) out.push(y)
+  if (out.length > 0) out.pop()
+  return out
+})
+
+/* ===== Linie (Cardinal Spline als Unterlage) ===== */
+const pts = computed(() => data.value.map(d => [xScale(d.year), yScale(d.avg)]))
+const smoothPath = computed(() => cardinalSplinePath(pts.value, 0.15))
+
+function cardinalSplinePath(points, tension = 0.15) {
+  if (!points || points.length === 0) return ''
+  if (points.length < 3) return `M${points.map(p => p.join(',')).join(' L')}`
+  const path = [`M${points[0][0]},${points[0][1]}`]
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[i === 0 ? 0 : i - 1]
+    const p1 = points[i]
+    const p2 = points[i + 1]
+    const p3 = points[i + 2] || p2
+    const t = tension
+    const cp1x = p1[0] + (p2[0] - p0[0]) * t / 6
+    const cp1y = p1[1] + (p2[1] - p0[1]) * t / 6
+    const cp2x = p2[0] - (p3[0] - p1[0]) * t / 6
+    const cp2y = p2[1] - (p3[1] - p1[1]) * t / 6
+    path.push(`C${cp1x},${cp1y} ${cp2x},${cp2y} ${p2[0]},${p2[1]}`)
+  }
+  return path.join(' ')
+}
+
+ /* ===== Datenbasirte Farbskala ===== */
+ const globalExtent = computed(() => {
+   if (!rows.value?.length) return [0, 1]
+   const vals = rows.value
+     .filter(d =>
+       d.CNTR_CODE === 'CH' &&
+       d.avg_year != null &&
+       +d.year >= 1971 && +d.year <= 2018
+    )
+     .map(d => +d.avg_year)
+   const ext = d3.extent(vals)
+   return (ext[0] == null) ? [0,1] : ext
+ })
+
+ const colorScaleVal = computed(() =>
+   d3.scaleSequential()
+     .domain(globalExtent.value) // <— gemeinsame Domain!
+    .interpolator(d3.interpolateTurbo)
+ )
+
+
+/* ===== Segmente (für Gradients) ===== */
+const segGradUID = `seg-${Math.random().toString(36).slice(2)}`
+const segments = computed(() => {
+  const out = []
+  for (let i = 0; i < data.value.length - 1; i++) {
+    const a = data.value[i]
+    const b = data.value[i + 1]
+    out.push({
+      i, a, b,
+      x1: xScale(a.year), y1: yScale(a.avg),
+      x2: xScale(b.year), y2: yScale(b.avg)
+    })
+  }
+  return out
+})
+
+/* ===== Aktuelles Jahr + Marker-Farbe (nach Wert) ===== */
+const minYear = computed(() => xDomain.value[0])
+const maxYear = computed(() => xDomain.value[1])
+
+const chosenYear = computed(() => {
+  if (!data.value.length) return null
+  const y = (props.year ?? maxYear.value)
+  return Math.min(maxYear.value, Math.max(minYear.value, Math.round(y)))
+})
+
+const cur = computed(() => {
+  if (!data.value.length || chosenYear.value == null) return null
+  let best = data.value[0], dbest = Math.abs(best.year - chosenYear.value)
+  for (const d of data.value) {
+    const dd = Math.abs(d.year - chosenYear.value)
+    if (dd < dbest) { best = d; dbest = dd }
+  }
+  return best
+})
+const curPt = computed(() => (cur.value ? [xScale(cur.value.year), yScale(cur.value.avg)] : null))
+const curColor = computed(() => cur.value ? colorScaleVal.value(cur.value.avg) : '#888')
+
+/* ===== Helper ===== */
+function formatTemp(v, digits = 1) {
+  if (v == null || Number.isNaN(v)) return ''
+  const num = Math.abs(v).toFixed(digits)
+  return (v < 0 ? '−' : '') + num + '°C'
+}
+</script>
+
 <template>
   <div class="chart-wrap" ref="wrapEl">
     <svg
@@ -107,185 +300,6 @@
     </div>
   </div>
 </template>
-
-<script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import * as d3 from 'd3'
-
-/* ===== Props ===== */
-const props = defineProps({
-  dataDir: { type: String, default: '/data' },
-  year:    { type: Number, default: null }
-})
-
-/* ===== ViewBox/Layout ===== */
-const vbW = 1160
-const vbH = 470
-const margin = { top: 92, right: 28, bottom: 48, left: 60 }
-const plotL = margin.left
-const plotR = vbW - margin.right
-const plotT = margin.top
-const plotB = vbH - margin.bottom
-const plotW = plotR - plotL
-const plotH = plotB - plotT
-const headroomTop = 20
-
-/* ===== Responsive HUD ===== */
-const wrapEl = ref(null)
-const frameW = ref(vbW), frameH = ref(vbH)
-let ro
-onMounted(() => {
-  ro = new ResizeObserver(([e]) => {
-    if (!e) return
-    frameW.value = e.contentRect.width || vbW
-    frameH.value = e.contentRect.height || vbH
-  })
-  if (wrapEl.value) ro.observe(wrapEl.value)
-})
-onBeforeUnmount(() => ro?.disconnect())
-
-const scale = computed(() => Math.min(frameW.value / vbW, frameH.value / vbH))
-const leftPx = computed(() => Math.round(20 * scale.value))
-const topPx  = computed(() => Math.round(14 * scale.value))
-
-/* Anschrift 20px tiefer */
-const hudOffsetPx = computed(() => Math.round(20 * scale.value))
-
-const titleFontPx    = computed(() => Math.round(16 * scale.value) + 'px')
-const subtitleFontPx = computed(() => Math.round(12 * scale.value) + 'px')
-const tickFontPx     = computed(() => Math.round(11 * scale.value) + 'px')
-
-/* ===== Daten laden & filtern ===== */
-const rows = ref([])
-const data = ref([]) // [{year, avg}]
-const ready = computed(() => data.value.length > 1)
-
-const norm = (s) => (s || '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
-
-onMounted(async () => {
-  const csv = await d3.csv(`${props.dataDir}/lau_lvl_data_temperatures_ch.csv`, d3.autoType)
-  rows.value = csv
-  data.value = csv
-    .filter(d =>
-      d.CNTR_CODE === 'CH' &&
-      norm(d.LAU_LABEL) === 'biere' &&
-      +d.year >= 1971 &&
-      d.avg_year != null
-    )
-    .map(d => ({ year: +d.year, avg: +d.avg_year }))
-    .sort((a, b) => d3.ascending(a.year, b.year))
-})
-
-/* ===== Skalen ===== */
-const xDomain = computed(() => d3.extent(data.value, d => d.year) ?? [1971, 2018])
-const yDomain = computed(() => {
-  const ext = d3.extent(data.value, d => d.avg)
-  if (!ext || ext[0] == null) return [0, 1]
-  const pad = Math.max(1, (ext[1] - ext[0]) * 0.1)
-  return [Math.floor(ext[0] - pad), Math.ceil(ext[1] + pad)]
-})
-
-function xScale(year) {
-  const [a, b] = xDomain.value
-  return plotL + ((year - a) / (b - a)) * plotW
-}
-function yScale(v) {
-  const [y0, y1] = yDomain.value
-  const t = (v - y0) / (y1 - y0)
-  return plotB - t * plotH
-}
-
-/* ===== Ticks ===== */
-const xTicks = computed(() => {
-  const [a, b] = xDomain.value
-  const out = []
-  for (let y = Math.ceil(a / 5) * 5; y <= b; y += 5) out.push(y)
-  return out
-})
-const yTicks = computed(() => {
-  const [y0, y1] = yDomain.value
-  const step = Math.max(1, Math.round((y1 - y0) / 6))
-  const out = []
-  for (let y = Math.ceil(y0); y <= Math.floor(y1); y += step) out.push(y)
-  if (out.length > 0) out.pop()
-  return out
-})
-
-/* ===== Linie (Cardinal Spline als Unterlage) ===== */
-const pts = computed(() => data.value.map(d => [xScale(d.year), yScale(d.avg)]))
-const smoothPath = computed(() => cardinalSplinePath(pts.value, 0.15))
-
-function cardinalSplinePath(points, tension = 0.15) {
-  if (!points || points.length === 0) return ''
-  if (points.length < 3) return `M${points.map(p => p.join(',')).join(' L')}`
-  const path = [`M${points[0][0]},${points[0][1]}`]
-  for (let i = 0; i < points.length - 1; i++) {
-    const p0 = points[i === 0 ? 0 : i - 1]
-    const p1 = points[i]
-    const p2 = points[i + 1]
-    const p3 = points[i + 2] || p2
-    const t = tension
-    const cp1x = p1[0] + (p2[0] - p0[0]) * t / 6
-    const cp1y = p1[1] + (p2[1] - p0[1]) * t / 6
-    const cp2x = p2[0] - (p3[0] - p1[0]) * t / 6
-    const cp2y = p2[1] - (p3[1] - p1[1]) * t / 6
-    path.push(`C${cp1x},${cp1y} ${cp2x},${cp2y} ${p2[0]},${p2[1]}`)
-  }
-  return path.join(' ')
-}
-
-/* ===== Farbskala (wertbasiert) ===== */
-const valueExtent = computed(() => d3.extent(data.value, d => d.avg) ?? [0, 1])
-const colorScaleVal = computed(() =>
-  d3.scaleSequential().domain(valueExtent.value).interpolator(d3.interpolateTurbo)
-)
-
-/* ===== Segmente (für Gradients) ===== */
-const segGradUID = `seg-${Math.random().toString(36).slice(2)}`
-const segments = computed(() => {
-  const out = []
-  for (let i = 0; i < data.value.length - 1; i++) {
-    const a = data.value[i]
-    const b = data.value[i + 1]
-    out.push({
-      i, a, b,
-      x1: xScale(a.year), y1: yScale(a.avg),
-      x2: xScale(b.year), y2: yScale(b.avg)
-    })
-  }
-  return out
-})
-
-/* ===== Aktuelles Jahr + Marker-Farbe (nach Wert) ===== */
-const minYear = computed(() => xDomain.value[0])
-const maxYear = computed(() => xDomain.value[1])
-
-const chosenYear = computed(() => {
-  if (!data.value.length) return null
-  const y = (props.year ?? maxYear.value)
-  return Math.min(maxYear.value, Math.max(minYear.value, Math.round(y)))
-})
-
-const cur = computed(() => {
-  if (!data.value.length || chosenYear.value == null) return null
-  let best = data.value[0], dbest = Math.abs(best.year - chosenYear.value)
-  for (const d of data.value) {
-    const dd = Math.abs(d.year - chosenYear.value)
-    if (dd < dbest) { best = d; dbest = dd }
-  }
-  return best
-})
-const curPt = computed(() => (cur.value ? [xScale(cur.value.year), yScale(cur.value.avg)] : null))
-const curColor = computed(() => cur.value ? colorScaleVal.value(cur.value.avg) : '#888')
-
-/* ===== Helper ===== */
-/** Ausgabe OHNE führendes Plus, aber mit Minus falls < 0, inkl. °C  */
-function formatTemp(v, digits = 1) {
-  if (v == null || Number.isNaN(v)) return ''
-  const num = Math.abs(v).toFixed(digits)
-  return (v < 0 ? '−' : '') + num + '°C'
-}
-</script>
 
 <style scoped>
 .chart-wrap { position: relative; width: 100%; height: 100%; }
