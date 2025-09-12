@@ -80,7 +80,7 @@ const barStyle = computed(() => ({
 </script>
 
 <template>
-  <!-- Wrapper rendert ZWEI Varianten: inline (unter dem Subtitel) und fixed (stuck) -->
+  <!-- Wrapper rendert zwei Varianten: inline (unter dem Subtitel) und fixed (stuck) -->
   <div class="sp-wrap" :style="barStyle">
     <div class="sp-inline" :class="{ hidden: stuck }">
       <div class="sp-track">

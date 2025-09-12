@@ -255,7 +255,7 @@ const contentTitleDy = computed(() => 0)
             <!-- Scroll-Progress-Bar -->
               <ScrollProgress
                 anchor="#article-subtitle"
-                height="2.5px"
+                height="3px"
                 color="#111"
                 track="rgba(2,25,72,.15)"
                 top="0"
