@@ -10,9 +10,8 @@ const props = defineProps({
   searchPlaceholder: { type: String, default: 'Gemeinde suchen …' },
   minZoom:   { type: Number,  default: 0.5 },
   maxZoom:   { type: Number,  default: 8 },
-  uiScale:   { type: Number,  default: 1.0 },
-  zoomScale: { type: Number,  default: 1.0 },
-  bildlegendeFontSize: { type: String, default: '13px' }
+  uiScale:   { type: Number,  default: 1.0 },   // weiterhin für Search/Buttons
+  zoomScale: { type: Number,  default: 1.0 },   // weiterhin für Buttons
 })
 
 /* ViewBox & Layout */
@@ -51,7 +50,7 @@ const colorScale   = ref(null)
 const domainMin    = ref(0)
 const domainMax    = ref(1)
 
-/* UI-Skalierung */
+/* ===== UI-Skalierung (bestehend) ===== */
 const internalScale = ref(1)
 function updateUiScale(){
   const r = svgEl.value?.getBoundingClientRect()
@@ -63,32 +62,30 @@ const zoomScaleNum = computed(()=>Math.min(1.8, Math.max(0.6,  internalScale.val
 const uiScaleCss   = computed(()=>uiScaleNum.value.toFixed(3))
 const zoomScaleCss = computed(()=>zoomScaleNum.value.toFixed(3))
 
-// Neue Skalierungsfaktoren für Buttons und Legende im Expanded-Modus
-const fitBtnScale = computed(() => isExpanded.value ? 0.9 : 1.0)
-const closeBtnScale = computed(() => isExpanded.value ? 1.1 : 1.2)
-const legendOffset = computed(() => isExpanded.value ? '38px' : '18px')
-const searchOffset = computed(() => isExpanded.value ? '38px' : '18px')
-const legendUiScale = computed(() => isExpanded.value ? (uiScaleNum.value * 1.4).toFixed(3) : uiScaleCss.value)
-
-/* Legende */
-const legendBaseW = 8, legendBaseH = 90
-const legendW = computed(()=>Math.round(legendBaseW * uiScaleNum.value))
-const legendH = computed(()=>Math.round(legendBaseH * uiScaleNum.value))
+/* ===== Legende (Option A – viewBox-basiert, unabhängig von uiScale) ===== */
+const hudScaleLegend = computed(() => Math.max(0.6, Math.min(2.0, internalScale.value)))
+const clamp = (x,a,b) => Math.min(b, Math.max(a, x))
+const legendBarW = computed(()=> Math.round(clamp(8   * hudScaleLegend.value, 12, 36)))
+const legendBarH = computed(()=> Math.round(clamp(140 * hudScaleLegend.value, 90, 300)))
+const legendFontPx = computed(()=> Math.round(clamp(12 * hudScaleLegend.value, 9, 18)) + 'px')
 const legendId = `legend-${Math.random().toString(36).slice(2)}`
 function legendValue(p){ const t=p/100; return domainMax.value*(1-t)+domainMin.value*t }
 
+// (nur für Position im Layout – bestehende Offsets weiterverwenden)
+const fitBtnScale   = computed(() => isExpanded.value ? 0.9 : 1.0)
+const closeBtnScale = computed(() => isExpanded.value ? 1.1 : 1.2)
+const legendOffset  = computed(() => isExpanded.value ? '38px' : '18px')
+const searchOffset  = computed(() => isExpanded.value ? '38px' : '18px')
+
 /* Zoom & Pan */
-const zoomK = ref(1)
-const panX  = ref(0)
-const panY  = ref(0)
+const zoomK = ref(1), panX = ref(0), panY = ref(0)
 
 /* „Hand“-Pan (Pointer Events) */
 const isPanning = ref(false)
 let lastClientX = 0, lastClientY = 0
 let downX = 0, downY = 0, downTime = 0
 let moved = false, usedCapture = false
-const CLICK_TOL_PX = 6
-const CLICK_TOL_MS = 300
+const CLICK_TOL_PX = 6, CLICK_TOL_MS = 300
 
 function onPointerDown(e){
   if (e.button !== 0) return
@@ -98,25 +95,17 @@ function onPointerDown(e){
   downY = lastClientY = e.clientY
   downTime = performance.now()
   usedCapture = false
-  if (svgEl.value?.setPointerCapture) {
-    svgEl.value.setPointerCapture(e.pointerId)
-    usedCapture = true
-  }
+  if (svgEl.value?.setPointerCapture) { svgEl.value.setPointerCapture(e.pointerId); usedCapture = true }
 }
 function onPointerMove(e){
   if (!isPanning.value) return
   const dxCss = e.clientX - lastClientX
   const dyCss = e.clientY - lastClientY
   lastClientX = e.clientX; lastClientY = e.clientY
-
-  if (!moved && (Math.abs(e.clientX - downX) > CLICK_TOL_PX || Math.abs(e.clientY - downY) > CLICK_TOL_PX)) {
-    moved = true
-  }
-
+  if (!moved && (Math.abs(e.clientX - downX) > CLICK_TOL_PX || Math.abs(e.clientY - downY) > CLICK_TOL_PX)) moved = true
   const rect = svgEl.value.getBoundingClientRect()
   panX.value += (dxCss / rect.width)  * vbW
   panY.value += (dyCss / rect.height) * vbH
-
   tooltip.value.show = false
   updateInfoBoxPosition()
 }
@@ -124,36 +113,19 @@ function onPointerUp(e){
   if (svgEl.value?.releasePointerCapture) svgEl.value.releasePointerCapture(e.pointerId)
   const wasClick = !moved && (performance.now() - downTime) < CLICK_TOL_MS
   isPanning.value = false
-  if (usedCapture && wasClick) {
-    hitSelectAt(e.clientX, e.clientY)
-  }
+  if (usedCapture && wasClick) hitSelectAt(e.clientX, e.clientY)
 }
 
 function hitSelectAt(clientX, clientY){
   const el = document.elementFromPoint(clientX, clientY)
-  if (!el) { 
-    clearSelection()
-    return
-  }
-
-  // Liegt der Klick überhaupt in *diesem* SVG?
+  if (!el) { clearSelection(); return }
   const inThisSvg = !!svgEl.value && (el === svgEl.value || svgEl.value.contains(el))
-  if (!inThisSvg){
-    clearSelection()
-    return
-  }
-
-  // Wurde ein Gemeinde-Pfad getroffen?
+  if (!inThisSvg){ clearSelection(); return }
   const pathEl = el.closest('path')
   if (pathEl && svgEl.value.contains(pathEl)) {
     const key = pathEl.getAttribute('data-key')
-    if (key) {
-      const p = paths.value.find(x => x.key === key)
-      if (p) { onSelect(p); return }
-    }
+    if (key) { const p = paths.value.find(x => x.key === key); if (p) { onSelect(p); return } }
   }
-
-  // Klick *im SVG*, aber nicht auf einem Pfad → Hintergrundklick
   clearSelection()
 }
 
@@ -215,7 +187,10 @@ onMounted(async () => {
   geoPath.projection(projection)
 
   variationByKey.value = new Map()
-  for (const r of rows){ let k=norm(r.LAU_LABEL); if(nameAlias[k]) k=nameAlias[k]; if(!variationByKey.value.has(k)) variationByKey.value.set(k, r.variation) }
+  for (const r of rows){
+    let k = norm(r.LAU_LABEL); if (nameAlias[k]) k = nameAlias[k]
+    if (!variationByKey.value.has(k)) variationByKey.value.set(k, r.variation)
+  }
 
   const vals = Array.from(variationByKey.value.values()).filter(v => v!=null && !isNaN(v))
   const ext = d3.extent(vals)
@@ -226,7 +201,7 @@ onMounted(async () => {
   for (const f of feats){
     const d = geoPath(f); if(!d) continue
     const rawName = f?.properties?.name || ''
-    let k = norm(rawName); if(nameAlias[k]) k=nameAlias[k]
+    let k = norm(rawName); if (nameAlias[k]) k = nameAlias[k]
     const c = geoPath.centroid(f)
     P.push({ d, key:k, f, centroid:c, rawName })
     fByKey.set(k,f); nByKey.set(k,rawName)
@@ -250,7 +225,7 @@ onMounted(async () => {
   svg.addEventListener('wheel', onWheel, { passive:false })
 
   // Click-Away + ESC
-  document.addEventListener('click', onDocumentClick, true)   // capture
+  document.addEventListener('click', onDocumentClick, true)
   document.addEventListener('keydown', onKeydown)
 })
 
@@ -271,7 +246,7 @@ onBeforeUnmount(() => {
 
 /* Auswahl/Hintergrund/Click-Away */
 function clearSelection(){
-  if (isPanning.value) return            // nicht während Pan
+  if (isPanning.value) return
   selectedKey.value = null
   infoPos.value.show = false
   tooltip.value.show = false
@@ -280,17 +255,11 @@ function onBackgroundClick(){ clearSelection() }
 function onDocumentClick(e){
   const root = wrapEl.value
   if (!root) return
-  // Wenn der Klick NICHT in der Komponente war → Auswahl löschen
   if (!root.contains(e.target)) {
-    if (isExpanded.value) {
-      closeExpanded()
-    } else {
-      clearSelection()
-    }
+    if (isExpanded.value) closeExpanded(); else clearSelection()
     return
   }
-  // Wenn im Expanded-Modus und der Klick ist außerhalb des SVGs (aber innerhalb der Komponente) → Vollbild schließen
-  if (isExpanded.value && svgEl.value && !svgEl.value.contains(e.target)) {
+  if ( isExpanded.value && svgEl.value && !svgEl.value.contains(e.target)) {
     closeExpanded()
     return
   }
@@ -307,19 +276,6 @@ function fillForKey(k){
   const v = variationByKey.value.get(k)
   return (v != null && !isNaN(v)) ? colorScale.value(v) : '#c8c8c8'
 }
-
-// Farbverlegende
-const legendStops = 12
-const legendCssGradient = computed(() => {
-  if (!colorScale.value) return 'linear-gradient(#ccc,#ccc)'
-  const parts = []
-  for (let i = 0; i < legendStops; i++){
-    const t   = i / (legendStops - 1)             // 0..1
-    const val = domainMax.value * (1 - t) + domainMin.value * t
-    parts.push(`${colorScale.value(val)} ${Math.round(t*100)}%`)
-  }
-  return `linear-gradient(to bottom, ${parts.join(', ')})`
-})
 
 /* Tooltip/Hover */
 function onEnter(p, evt){
@@ -363,7 +319,7 @@ function updateInfoBoxPosition(){
   infoPos.value = { show:true, x:Math.round(xCss), y:Math.round(yCss - 18) }
 }
 
-/*  programmatische Zooms (Buttons) – zum Mittelpunkt */
+/* Programmatische Zooms */
 function zoomBy(factor){
   const Cx = vbW/2, Cy = vbH/2
   const k1 = zoomK.value
@@ -385,33 +341,15 @@ function centerOnKey(key, targetK=null){
   panY.value = Cy - k * p.centroid[1]
   nextTick().then(updateInfoBoxPosition)
 }
-function clamp(x,a,b){ return Math.max(a, Math.min(b, x)) }
 
 /* Vergrösserungs-Logik */
 const isExpanded = ref(false)
-
-function openExpanded(){
-  if (isExpanded.value) return
-  isExpanded.value = true
-  lockScroll(true)
-  nextTick().then(() => { updateUiScale(); updateInfoBoxPosition() })
-}
-function closeExpanded(){
-  if (!isExpanded.value) return
-  isExpanded.value = false
-  lockScroll(false)
-  nextTick().then(() => { updateUiScale(); updateInfoBoxPosition() })
-}
+function openExpanded(){ if (isExpanded.value) return; isExpanded.value = true;  lockScroll(true);  nextTick(()=>{ updateUiScale(); updateInfoBoxPosition() }) }
+function closeExpanded(){ if (!isExpanded.value) return; isExpanded.value = false; lockScroll(false); nextTick(()=>{ updateUiScale(); updateInfoBoxPosition() }) }
 function lockScroll(on){
-  const b = document.body
-  if (!b) return
-  if (on){
-    b.dataset._gmOverflow = b.style.overflow || ''
-    b.style.overflow = 'hidden'
-  } else {
-    b.style.overflow = b.dataset._gmOverflow || ''
-    delete b.dataset._gmOverflow
-  }
+  const b = document.body; if (!b) return
+  if (on){ b.dataset._gmOverflow = b.style.overflow || ''; b.style.overflow = 'hidden' }
+  else   { b.style.overflow = b.dataset._gmOverflow || ''; delete b.dataset._gmOverflow }
 }
 
 /* Suche */
@@ -446,8 +384,7 @@ function keyForRaw(raw){ const k0=norm(raw); const k=nameAlias[k0]||k0; return f
       '--fitBtnScale': fitBtnScale,
       '--closeBtnScale': closeBtnScale,
       '--legendOffset': legendOffset,
-      '--searchOffset': searchOffset,
-      '--legendUiScale': legendUiScale
+      '--searchOffset': searchOffset
     }"
   >
     <svg
@@ -459,10 +396,8 @@ function keyForRaw(raw){ const k0=norm(raw); const k=nameAlias[k0]||k0; return f
       role="img"
       :aria-label="`Gemeindekarte Schweiz (${year})`"
     >
-      <!-- Hintergrund: Klick löscht Selektion -->
       <rect :width="vbW" :height="vbH" :fill="svgBg" @click="onBackgroundClick" />
 
-      <!-- zoombare Ebene -->
       <g class="zoom-layer" :transform="`translate(${panX} ${panY}) scale(${zoomK})`">
         <g v-if="ready && paths.length">
           <path
@@ -471,10 +406,7 @@ function keyForRaw(raw){ const k0=norm(raw); const k=nameAlias[k0]||k0; return f
             :d="p.d"
             :fill="fillForKey(p.key)"
             :data-key="p.key"
-            :class="{
-              'is-hovered': hoveredKey === p.key && selectedKey !== p.key,
-              'is-selected': selectedKey === p.key
-            }"
+            :class="{ 'is-hovered': hoveredKey === p.key && selectedKey !== p.key, 'is-selected': selectedKey === p.key }"
             stroke="#fff"
             stroke-width="0.4"
             vector-effect="non-scaling-stroke"
@@ -489,27 +421,19 @@ function keyForRaw(raw){ const k0=norm(raw); const k=nameAlias[k0]||k0; return f
 
     <!-- HUD -->
     <div class="hud" v-if="ready" :style="{ '--uiScale': uiScaleCss, '--zoomScale': zoomScaleCss }">
-      
-    <!-- Legende -->
-    <div
-      class="hud-legend"
-      :style="{ right: 'var(--legendOffset)', top: 'var(--legendOffset)' }"
-    >
-    <div class="legend-label legend-top" :style="{ fontSize: `calc(9px * var(--legendUiScale))` }">
-      {{ domainMax.toFixed(1) }} °C
-    </div>
-    <div
-      class="legend-bar"
-      :style="{
-      width:  legendW + 'px',
-      height: legendH + 'px',
-      background: legendCssGradient
-        }"
-      />
-      <div class="legend-label legend-bottom" :style="{ fontSize: `calc(9px * var(--legendUiScale))` }">
-        {{ domainMin.toFixed(1) }} °C
+      <!-- Legende (Option A) -->
+      <div class="hud-legend" :style="{ right: 'var(--legendOffset)', top: 'var(--legendOffset)' }">
+        <div class="legend-label" :style="{ fontSize: legendFontPx }">{{ domainMax.toFixed(1) }} °C</div>
+        <svg class="legend-bar" :width="legendBarW" :height="legendBarH" viewBox="0 0 16 180" preserveAspectRatio="none">
+          <defs>
+            <linearGradient :id="legendId" x1="0" y1="0" x2="0" y2="1">
+              <stop v-for="i in 101" :key="i" :offset="(i-1)/100" :stop-color="colorScale(legendValue(i-1))" />
+            </linearGradient>
+          </defs>
+          <rect x="0" y="0" width="16" height="180" :fill="`url(#${legendId})`" rx="2" />
+        </svg>
+        <div class="legend-label" :style="{ fontSize: legendFontPx }">{{ domainMin.toFixed(1) }} °C</div>
       </div>
-    </div>
 
       <!-- Suche -->
       <div class="hud-search">
@@ -525,12 +449,7 @@ function keyForRaw(raw){ const k0=norm(raw); const k=nameAlias[k0]||k0; return f
           @keydown.enter.prevent="applySuggest()"
         />
         <ul v-show="suggestions.length" class="search-suggest">
-          <li
-            v-for="(name,idx) in suggestions"
-            :key="name"
-            :class="{ active: idx === suggestIndex }"
-            @mousedown.prevent="selectByName(name)"
-          >
+          <li v-for="(name,idx) in suggestions" :key="name" :class="{ active: idx === suggestIndex }" @mousedown.prevent="selectByName(name)">
             {{ name }}
           </li>
         </ul>
@@ -542,15 +461,9 @@ function keyForRaw(raw){ const k0=norm(raw); const k=nameAlias[k0]||k0; return f
         <button class="zoom-btn" @click="zoomBy(0.9)">−</button>
       </div>
 
-      <!-- Vergrössern-Button -->
-      <div class="hud-fit" v-if="!isExpanded">
-        <button class="zoom-btn" @click="openExpanded">⤢</button>
-      </div>
-
-      <!-- Schliessen-Button (nur im Vollbild) -->
-      <div class="hud-close" v-if="isExpanded">
-        <button class="zoom-btn" @click="closeExpanded" title="Zurück">⤡</button>
-      </div>
+      <!-- Vergrössern / Schliessen -->
+      <div class="hud-fit" v-if="!isExpanded"><button class="zoom-btn" @click="openExpanded">⤢</button></div>
+      <div class="hud-close" v-if="isExpanded"><button class="zoom-btn" @click="closeExpanded" title="Zurück">⤡</button></div>
     </div>
 
     <!-- Info-Box -->
@@ -559,30 +472,18 @@ function keyForRaw(raw){ const k0=norm(raw); const k=nameAlias[k0]||k0; return f
       <div class="info-line">Temperaturanstieg zwischen den 1960er-Jahren und 2009–2018:</div>
       <div class="info-value">{{ selectedVariationDisplay }}</div>
     </div>
-    </div>
+  </div>
 </template>
 
 <style scoped>
 .gm-wrap{ position: relative; width: 100%; height: 100%; }
-.gm-svg{
-  width: 100%; height: 100%; display: block;
-  cursor: grab;
-  touch-action: none;
-}
+.gm-svg{ width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
 .gm-svg.panning{ cursor: grabbing; }
 
-/* Vollbild-Ebene */
 .gm-wrap.is-expanded{
-  position: fixed;
-  left: 50%;
-  top: 50vh;
-  transform: translate(-50%, -50%);
-  width: min(98vw, 1200px);
-  height: min(90vh, 500px);
-  z-index: 1000;
-  background: #fff;
-  border-radius:5px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  position: fixed; left: 50%; top: 50vh; transform: translate(-50%, -50%);
+  width: min(98vw, 1200px); height: min(90vh, 500px);
+  z-index: 1000; background: #fff; border-radius:5px; box-shadow: 0 8px 32px rgba(0,0,0,0.18);
 }
 
 /* Hover/Select */
@@ -592,34 +493,30 @@ path.is-selected{ stroke:#000; stroke-width:1.6; filter:drop-shadow(0 0 3px rgba
 /* HUD */
 .hud{ position:absolute; inset:0; pointer-events:none; }
 
-/* Legende */
+/* Legende – ohne CSS-Scale-Variablen, Größe kommt aus JS */
 .hud-legend{
   position:absolute;
   display:flex; flex-direction:column; align-items:center;
-  gap:calc(4px * var(--legendUiScale, var(--uiScale)));
-  pointer-events:none;
+  gap:6px; pointer-events:none;
 }
-.legend-bar{ display:block; border-radius:2px; }
+.legend-bar{ display:block; }
 .legend-label{ line-height:1; color:#333; text-shadow:0 1px 1px rgba(255,255,255,.5); }
 
 /* Suche */
 .hud-search{
   position:absolute;
-  left:var(--searchOffset, min(18px,3.2vw));
-  top:var(--searchOffset, min(18px,3.2vw));
-  width:min(calc(240px * var(--uiScale)), 36vw); pointer-events:auto;
+  left:var(--searchOffset, 18px);
+  top:var(--searchOffset, 18px);
+  width:min(calc(240px * var(--uiScale)), 36vw);
+  pointer-events:auto;
 }
-.gm-wrap.is-expanded .hud-search{
-  width:min(calc(300px * var(--uiScale)), 44vw);
-}
+.gm-wrap.is-expanded .hud-search{ width:min(calc(300px * var(--uiScale)), 44vw); }
 .search-input{
   width:100%; padding:calc(6px * var(--uiScale)) calc(14px * var(--uiScale));
   border-radius:calc(6px * var(--uiScale)); border:1px solid rgba(0,0,0,.2);
   outline:none; font-size:calc(15px * var(--uiScale));
   background:rgba(237, 236, 236, 0.92); backdrop-filter:blur(4px);
 }
-
-
 .gm-wrap.is-expanded .search-input{
   font-size: clamp(12px, calc(16px * var(--uiScale)), 18px);
   padding: calc(8px * var(--uiScale)) calc(14px * var(--uiScale));
@@ -631,76 +528,39 @@ path.is-selected{ stroke:#000; stroke-width:1.6; filter:drop-shadow(0 0 3px rgba
   box-shadow:0 4px 16px rgba(0,0,0,.12); max-height:260px; overflow:auto;
   font-size:calc(15px * var(--uiScale));
 }
-.gm-wrap.is-expanded .search-suggest{
-  font-size:calc(16px * var(--uiScale));
-}
+.gm-wrap.is-expanded .search-suggest{ font-size:calc(16px * var(--uiScale)); }
 .search-suggest li{ padding:8px 14px; cursor:pointer; }
 .search-suggest li.active, .search-suggest li:hover{ background:#f1f2f3; }
 
 /* Zoom */
 .hud-zoom{
-  position:absolute; 
-  right:var(--legendOffset, min(18px,3.2vw));
-  bottom:var(--legendOffset, min(18px,3.2vw));
-  display:grid; 
-  gap:calc(10px * var(--zoomScale, var(--uiScale)));
-  pointer-events:auto;
+  position:absolute; right:var(--legendOffset, 18px); bottom:var(--legendOffset, 18px);
+  display:grid; gap:calc(10px * var(--zoomScale, var(--uiScale))); pointer-events:auto;
 }
-.gm-wrap.is-expanded .hud-zoom{
-  gap:calc(16px * var(--zoomScale, var(--uiScale)));
-}
-
+.gm-wrap.is-expanded .hud-zoom{ gap:calc(16px * var(--zoomScale, var(--uiScale))); }
 .zoom-btn{
   display:inline-flex; align-items:center; justify-content:center;
   width:calc(20px * var(--zoomScale, var(--uiScale)));
   height:calc(20px * var(--zoomScale, var(--uiScale)));
-  aspect-ratio:1/1; padding:0;
-  border:1px solid rgba(0,0,0,.2);
-  background:rgba(237, 236, 236, 0.92); font-size:calc(12px * var(--zoomScale, var(--uiScale)));
+  aspect-ratio:1/1; padding:0; border:1px solid rgba(0,0,0,.2);
+  background:rgba(237,236,236,.92); font-size:calc(12px * var(--zoomScale, var(--uiScale)));
   line-height:1; font-weight:600; cursor:pointer;
 }
 .zoom-btn:hover{ background:#fff; }
 .gm-wrap.is-expanded .zoom-btn{
   width:calc(26px * var(--zoomScale, var(--uiScale)));
   height:calc(26px * var(--zoomScale, var(--uiScale)));
-  font-size:calc(20px * var(--zoomScale, var,--uiScale));
+  font-size:calc(20px * var(--zoomScale, var(--uiScale)));
 }
 
-/* Vergrösserungs-Button */
-.hud-fit{
-  position:absolute;
-  left:var(--legendOffset, min(18px,3.2vw));
-  bottom:var(--legendOffset, min(18px,3.2vw));
-  pointer-events:auto;
-}
-.hud-fit .zoom-btn {
-  width: calc(24px * var(--fitBtnScale));
-  height: calc(24px * var(--fitBtnScale));
-  font-size: calc(18px * var(--fitBtnScale));
-}
-.gm-wrap.is-expanded .hud-fit .zoom-btn {
-  width: calc(26px * var(--fitBtnScale));
-  height: calc(26px * var(--fitBtnScale));
-  font-size: calc(20px * var,--fitBtnScale);
-}
+/* Fit/Close */
+.hud-fit{ position:absolute; left:var(--legendOffset, 18px); bottom:var(--legendOffset, 18px); pointer-events:auto; }
+.hud-fit .zoom-btn{ width: calc(24px * var(--fitBtnScale)); height: calc(24px * var(--fitBtnScale)); font-size: calc(18px * var(--fitBtnScale)); }
+.gm-wrap.is-expanded .hud-fit .zoom-btn{ width: calc(26px * var(--fitBtnScale)); height: calc(26px * var(--fitBtnScale)); font-size: calc(20px * var(--fitBtnScale)); }
 
-/* Close im Vollbild */
-.hud-close{
-  position:absolute;
-  left:var(--legendOffset, min(18px,3.2vw));
-  bottom:var(--legendOffset, min(18px,3.2vw));
-  pointer-events:auto;
-}
-.hud-close .zoom-btn {
-  width: calc(24px * var(--closeBtnScale));
-  height: calc(24px * var(--closeBtnScale));
-  font-size: calc(14px * var(--closeBtnScale));
-}
-.gm-wrap.is-expanded .hud-close .zoom-btn {
-  width: calc(26px * var(--closeBtnScale));
-  height: calc(26px * var(--closeBtnScale));
-  font-size: calc(20px * var,--closeBtnScale);
-}
+.hud-close{ position:absolute; left:var(--legendOffset, 18px); bottom:var(--legendOffset, 18px); pointer-events:auto; }
+.hud-close .zoom-btn{ width: calc(24px * var(--closeBtnScale)); height: calc(24px * var(--closeBtnScale)); font-size: calc(14px * var(--closeBtnScale)); }
+.gm-wrap.is-expanded .hud-close .zoom-btn{ width: calc(26px * var(--closeBtnScale)); height: calc(26px * var(--closeBtnScale)); font-size: calc(20px * var(--closeBtnScale)); }
 
 /* Info-Box */
 .gm-infobox{
@@ -711,5 +571,4 @@ path.is-selected{ stroke:#000; stroke-width:1.6; filter:drop-shadow(0 0 3px rgba
 .info-name{ font-weight:700; margin-bottom:4px; }
 .info-line{ font-size:13px; opacity:.95; }
 .info-value{ font-size:22px; font-weight:700; text-align:center; margin-top:4px; }
-
 </style>
