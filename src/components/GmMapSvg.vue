@@ -1,120 +1,3 @@
-<template>
-  <div
-    class="gm-wrap"
-    ref="wrapEl"
-    :class="{ 'is-expanded': isExpanded }"
-    :style="{
-      '--fitBtnScale': fitBtnScale,
-      '--closeBtnScale': closeBtnScale,
-      '--legendOffset': legendOffset,
-      '--searchOffset': searchOffset,
-      '--legendUiScale': legendUiScale
-    }"
-  >
-    <svg
-      ref="svgEl"
-      class="gm-svg"
-      :class="{ panning: isPanning }"
-      :viewBox="`0 0 ${vbW} ${vbH}`"
-      preserveAspectRatio="xMidYMid meet"
-      role="img"
-      :aria-label="`Gemeindekarte Schweiz (${year})`"
-    >
-      <!-- Hintergrund: Klick löscht Selektion -->
-      <rect :width="vbW" :height="vbH" :fill="svgBg" @click="onBackgroundClick" />
-
-      <!-- zoombare Ebene -->
-      <g class="zoom-layer" :transform="`translate(${panX} ${panY}) scale(${zoomK})`">
-        <g v-if="ready && paths.length">
-          <path
-            v-for="p in paths"
-            :key="p.key"
-            :d="p.d"
-            :fill="fillForKey(p.key)"
-            :data-key="p.key"
-            :class="{
-              'is-hovered': hoveredKey === p.key && selectedKey !== p.key,
-              'is-selected': selectedKey === p.key
-            }"
-            stroke="#fff"
-            stroke-width="0.4"
-            vector-effect="non-scaling-stroke"
-            @mouseenter="onEnter(p, $event)"
-            @mousemove="onMove($event)"
-            @mouseleave="onLeave"
-            @click="onSelect(p)"
-          />
-        </g>
-      </g>
-    </svg>
-
-    <!-- HUD -->
-    <div class="hud" v-if="ready" :style="{ '--uiScale': uiScaleCss, '--zoomScale': zoomScaleCss }">
-      <!-- Legende -->
-      <div class="hud-legend">
-        <div class="legend-label legend-top">{{ domainMax.toFixed(1) }} °C</div>
-        <svg class="legend-bar" :width="legendW" :height="legendH" viewBox="0 0 16 180" preserveAspectRatio="none">
-          <defs>
-            <linearGradient :id="legendId" x1="0" y1="0" x2="0" y2="1">
-              <stop v-for="i in 101" :key="i" :offset="(i-1)/100" :stop-color="colorScale(legendValue(i-1))" />
-            </linearGradient>
-          </defs>
-          <rect x="0" y="0" width="16" height="180" :fill="`url(#${legendId})`" rx="2" />
-        </svg>
-        <div class="legend-label legend-bottom">{{ domainMin.toFixed(1) }} °C</div>
-      </div>
-
-      <!-- Suche -->
-      <div class="hud-search">
-        <input
-          ref="searchInputEl"
-          type="text"
-          class="search-input"
-          v-model="searchQuery"
-          :placeholder="searchPlaceholder"
-          @input="onSearchInput"
-          @keydown.down.prevent="moveSuggest(1)"
-          @keydown.up.prevent="moveSuggest(-1)"
-          @keydown.enter.prevent="applySuggest()"
-        />
-        <ul v-show="suggestions.length" class="search-suggest">
-          <li
-            v-for="(name,idx) in suggestions"
-            :key="name"
-            :class="{ active: idx === suggestIndex }"
-            @mousedown.prevent="selectByName(name)"
-          >
-            {{ name }}
-          </li>
-        </ul>
-      </div>
-
-      <!-- Zoom-Buttons -->
-      <div class="hud-zoom">
-        <button class="zoom-btn" @click="zoomBy(1.1)">+</button>
-        <button class="zoom-btn" @click="zoomBy(0.9)">−</button>
-      </div>
-
-      <!-- Vergrössern-Button -->
-      <div class="hud-fit" v-if="!isExpanded">
-        <button class="zoom-btn" @click="openExpanded">⤢</button>
-      </div>
-
-      <!-- Schliessen-Button (nur im Vollbild) -->
-      <div class="hud-close" v-if="isExpanded">
-        <button class="zoom-btn" @click="closeExpanded" title="Zurück">⤡</button>
-      </div>
-    </div>
-
-    <!-- Info-Box -->
-    <div v-if="selectedKey && infoPos.show" class="gm-infobox" :style="{ left: infoPos.x + 'px', top: infoPos.y + 'px' }">
-      <div class="info-name">{{ selectedRawName }}</div>
-      <div class="info-line">Temperaturanstieg zwischen den 1960er-Jahren und 2009–2018:</div>
-      <div class="info-value">{{ selectedVariationDisplay }}</div>
-    </div>
-    </div>
-</template>
-
 <script setup>
 import { ref, onMounted, onBeforeUnmount, nextTick, computed } from 'vue'
 import * as d3 from 'd3'
@@ -540,6 +423,123 @@ function selectByName(name){
 }
 function keyForRaw(raw){ const k0=norm(raw); const k=nameAlias[k0]||k0; return featuresByKey.value.has(k)?k:null }
 </script>
+
+<template>
+  <div
+    class="gm-wrap"
+    ref="wrapEl"
+    :class="{ 'is-expanded': isExpanded }"
+    :style="{
+      '--fitBtnScale': fitBtnScale,
+      '--closeBtnScale': closeBtnScale,
+      '--legendOffset': legendOffset,
+      '--searchOffset': searchOffset,
+      '--legendUiScale': legendUiScale
+    }"
+  >
+    <svg
+      ref="svgEl"
+      class="gm-svg"
+      :class="{ panning: isPanning }"
+      :viewBox="`0 0 ${vbW} ${vbH}`"
+      preserveAspectRatio="xMidYMid meet"
+      role="img"
+      :aria-label="`Gemeindekarte Schweiz (${year})`"
+    >
+      <!-- Hintergrund: Klick löscht Selektion -->
+      <rect :width="vbW" :height="vbH" :fill="svgBg" @click="onBackgroundClick" />
+
+      <!-- zoombare Ebene -->
+      <g class="zoom-layer" :transform="`translate(${panX} ${panY}) scale(${zoomK})`">
+        <g v-if="ready && paths.length">
+          <path
+            v-for="p in paths"
+            :key="p.key"
+            :d="p.d"
+            :fill="fillForKey(p.key)"
+            :data-key="p.key"
+            :class="{
+              'is-hovered': hoveredKey === p.key && selectedKey !== p.key,
+              'is-selected': selectedKey === p.key
+            }"
+            stroke="#fff"
+            stroke-width="0.4"
+            vector-effect="non-scaling-stroke"
+            @mouseenter="onEnter(p, $event)"
+            @mousemove="onMove($event)"
+            @mouseleave="onLeave"
+            @click="onSelect(p)"
+          />
+        </g>
+      </g>
+    </svg>
+
+    <!-- HUD -->
+    <div class="hud" v-if="ready" :style="{ '--uiScale': uiScaleCss, '--zoomScale': zoomScaleCss }">
+      <!-- Legende -->
+      <div class="hud-legend">
+        <div class="legend-label legend-top">{{ domainMax.toFixed(1) }} °C</div>
+        <svg class="legend-bar" :width="legendW" :height="legendH" viewBox="0 0 16 180" preserveAspectRatio="none">
+          <defs>
+            <linearGradient :id="legendId" x1="0" y1="0" x2="0" y2="1">
+              <stop v-for="i in 101" :key="i" :offset="(i-1)/100" :stop-color="colorScale(legendValue(i-1))" />
+            </linearGradient>
+          </defs>
+          <rect x="0" y="0" width="16" height="180" :fill="`url(#${legendId})`" rx="2" />
+        </svg>
+        <div class="legend-label legend-bottom">{{ domainMin.toFixed(1) }} °C</div>
+      </div>
+
+      <!-- Suche -->
+      <div class="hud-search">
+        <input
+          ref="searchInputEl"
+          type="text"
+          class="search-input"
+          v-model="searchQuery"
+          :placeholder="searchPlaceholder"
+          @input="onSearchInput"
+          @keydown.down.prevent="moveSuggest(1)"
+          @keydown.up.prevent="moveSuggest(-1)"
+          @keydown.enter.prevent="applySuggest()"
+        />
+        <ul v-show="suggestions.length" class="search-suggest">
+          <li
+            v-for="(name,idx) in suggestions"
+            :key="name"
+            :class="{ active: idx === suggestIndex }"
+            @mousedown.prevent="selectByName(name)"
+          >
+            {{ name }}
+          </li>
+        </ul>
+      </div>
+
+      <!-- Zoom-Buttons -->
+      <div class="hud-zoom">
+        <button class="zoom-btn" @click="zoomBy(1.1)">+</button>
+        <button class="zoom-btn" @click="zoomBy(0.9)">−</button>
+      </div>
+
+      <!-- Vergrössern-Button -->
+      <div class="hud-fit" v-if="!isExpanded">
+        <button class="zoom-btn" @click="openExpanded">⤢</button>
+      </div>
+
+      <!-- Schliessen-Button (nur im Vollbild) -->
+      <div class="hud-close" v-if="isExpanded">
+        <button class="zoom-btn" @click="closeExpanded" title="Zurück">⤡</button>
+      </div>
+    </div>
+
+    <!-- Info-Box -->
+    <div v-if="selectedKey && infoPos.show" class="gm-infobox" :style="{ left: infoPos.x + 'px', top: infoPos.y + 'px' }">
+      <div class="info-name">{{ selectedRawName }}</div>
+      <div class="info-line">Temperaturanstieg zwischen den 1960er-Jahren und 2009–2018:</div>
+      <div class="info-value">{{ selectedVariationDisplay }}</div>
+    </div>
+    </div>
+</template>
 
 <style scoped>
 .gm-wrap{ position: relative; width: 100%; height: 100%; }

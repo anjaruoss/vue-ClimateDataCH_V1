@@ -1,78 +1,3 @@
-<template>
-  <div class="map-wrap" ref="wrapEl">
-    <!-- Karte: unverzerrt durch viewBox + meet -->
-    <svg
-      class="map-svg"
-      :viewBox="`0 0 ${vbW} ${vbH}`"
-      preserveAspectRatio="xMidYMid meet"
-      role="img"
-      aria-label="Karte Schweiz"
-    >
-      <rect :width="vbW" :height="vbH" :fill="svgBg" />
-      <g v-if="paths.length">
-        <path
-          v-for="p in paths"
-          :key="p.key"
-          :d="p.d"
-          :fill="fillFor(p.f)"
-          stroke="#fff"
-          stroke-width="0.003"
-          vector-effect="non-scaling-stroke"
-        />
-      </g>
-    </svg>
-
-    <!-- HUD (skaliert mit hudScale) -->
-    <div class="hud">
-      <!-- Jahr -->
-      <div
-        class="hud-year"
-        :style="{
-          color: textColor,
-          left: leftPx + 'px',
-          top:  topPx  + 'px',
-          fontSize: yearFontPx
-        }"
-      >{{ year }}</div>
-
-      <!-- Legende -->
-      <div
-        class="hud-legend"
-        v-if="colorScale"
-        :style="{ right: leftPx + 'px', top: topPx + 'px' }"
-      >
-        <div class="legend-label" :style="{ fontSize: legendFontPx }">
-          {{ domainMax.toFixed(1) }} °C
-        </div>
-
-        <svg
-          class="legend-bar"
-          :width="legendBarW"
-          :height="legendBarH"
-          viewBox="0 0 16 180"
-          preserveAspectRatio="none"
-        >
-          <defs>
-            <linearGradient :id="legendId" x1="0" y1="0" x2="0" y2="1">
-              <stop
-                v-for="i in 101"
-                :key="i"
-                :offset="(i-1)/100"
-                :stop-color="colorScale(legendValue(i-1))"
-              />
-            </linearGradient>
-          </defs>
-          <rect x="0" y="0" width="16" height="180" :fill="`url(#${legendId})`" rx="2" />
-        </svg>
-
-        <div class="legend-label" :style="{ fontSize: legendFontPx }">
-          {{ domainMin.toFixed(1) }} °C
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
-
 <script setup>
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import * as d3 from 'd3'
@@ -218,6 +143,81 @@ function fillFor(f) {
   return val != null ? colorScale.value(val) : '#c8c8c8'
 }
 </script>
+
+<template>
+  <div class="map-wrap" ref="wrapEl">
+    <!-- Karte: unverzerrt durch viewBox + meet -->
+    <svg
+      class="map-svg"
+      :viewBox="`0 0 ${vbW} ${vbH}`"
+      preserveAspectRatio="xMidYMid meet"
+      role="img"
+      aria-label="Karte Schweiz"
+    >
+      <rect :width="vbW" :height="vbH" :fill="svgBg" />
+      <g v-if="paths.length">
+        <path
+          v-for="p in paths"
+          :key="p.key"
+          :d="p.d"
+          :fill="fillFor(p.f)"
+          stroke="#fff"
+          stroke-width="0.003"
+          vector-effect="non-scaling-stroke"
+        />
+      </g>
+    </svg>
+
+    <!-- HUD (skaliert mit hudScale) -->
+    <div class="hud">
+      <!-- Jahr -->
+      <div
+        class="hud-year"
+        :style="{
+          color: textColor,
+          left: leftPx + 'px',
+          top:  topPx  + 'px',
+          fontSize: yearFontPx
+        }"
+      >{{ year }}</div>
+
+      <!-- Legende -->
+      <div
+        class="hud-legend"
+        v-if="colorScale"
+        :style="{ right: leftPx + 'px', top: topPx + 'px' }"
+      >
+        <div class="legend-label" :style="{ fontSize: legendFontPx }">
+          {{ domainMax.toFixed(1) }} °C
+        </div>
+
+        <svg
+          class="legend-bar"
+          :width="legendBarW"
+          :height="legendBarH"
+          viewBox="0 0 16 180"
+          preserveAspectRatio="none"
+        >
+          <defs>
+            <linearGradient :id="legendId" x1="0" y1="0" x2="0" y2="1">
+              <stop
+                v-for="i in 101"
+                :key="i"
+                :offset="(i-1)/100"
+                :stop-color="colorScale(legendValue(i-1))"
+              />
+            </linearGradient>
+          </defs>
+          <rect x="0" y="0" width="16" height="180" :fill="`url(#${legendId})`" rx="2" />
+        </svg>
+
+        <div class="legend-label" :style="{ fontSize: legendFontPx }">
+          {{ domainMin.toFixed(1) }} °C
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
 
 <style scoped>
 .map-wrap { position: relative; width: 100%; height: 100%; }
