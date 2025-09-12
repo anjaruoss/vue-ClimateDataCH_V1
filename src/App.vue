@@ -189,6 +189,15 @@ const contentTitleDy = computed(() => 0)
                   :year="gmLinieYear"
                   :data-dir="dataDir"
                 />
+              <div class="bildlegende" v-if="gmSelectedName">
+                Das Liniendiagramm zeigt die durchschnittlichen Jahrestemperaturen der Gemeinde {{ gmSelectedName }} seit 1971.
+                <a href="https://cds.climate.copernicus.eu/datasets/reanalysis-uerra-europe-single-levels?tab=overview" 
+                  target="_blank" 
+                  rel="noopener" 
+                >
+                Quelle: UERRA-Regionalreanalyse
+                </a>
+              </div>
               </div>
             </article>
           </div>

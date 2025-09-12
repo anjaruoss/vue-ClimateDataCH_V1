@@ -28,6 +28,7 @@ const geoPath   = d3.geoPath().projection(projection)
 /* State */
 const wrapEl = ref(null)
 const svgEl  = ref(null)
+const hudEl  = ref(null)
 const ready  = ref(false)
 
 const paths  = ref([])
@@ -257,6 +258,8 @@ function onBackgroundClick(){ clearSelection() }
 function onDocumentClick(e){
   const root = wrapEl.value
   if (!root) return
+  // Klick im HUD (inkl. Suchfeld) soll Vergrößerung nicht schließen
+  if (hudEl.value && hudEl.value.contains(e.target)) return
   if (!root.contains(e.target)) {
     if (isExpanded.value) closeExpanded(); else clearSelection()
     return
@@ -430,7 +433,7 @@ function keyForRaw(raw){ const k0=norm(raw); const k=nameAlias[k0]||k0; return f
     </svg>
 
     <!-- HUD -->
-    <div class="hud" v-if="ready" :style="{ '--uiScale': uiScaleCss, '--zoomScale': zoomScaleCss }">
+  <div class="hud" v-if="ready" :style="{ '--uiScale': uiScaleCss, '--zoomScale': zoomScaleCss }" ref="hudEl">
       <!-- Legende (Option A) -->
       <div class="hud-legend" :style="{ right: 'var(--legendOffset)', top: 'var(--legendOffset)' }">
         <div class="legend-label" :style="{ fontSize: legendFontPx }">{{ domainMax.toFixed(1) }} °C</div>
