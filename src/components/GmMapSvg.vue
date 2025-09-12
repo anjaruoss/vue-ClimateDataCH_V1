@@ -1,5 +1,5 @@
 <script setup>
-const emit = defineEmits(['gemeinde-selected'])
+const emit = defineEmits(['gemeinde-selected', 'close-gemeinde-info'])
 import { ref, onMounted, onBeforeUnmount, nextTick, computed } from 'vue'
 import * as d3 from 'd3'
 
@@ -251,6 +251,7 @@ function clearSelection(){
   selectedKey.value = null
   infoPos.value.show = false
   tooltip.value.show = false
+  emit('close-gemeinde-info')
 }
 function onBackgroundClick(){ clearSelection() }
 function onDocumentClick(e){
@@ -304,7 +305,12 @@ const selectedVariationDisplay = computed(()=>{
   return (v != null && !isNaN(v)) ? `${Math.round(v*10)/10} °C` : 'Keine Daten'
 })
 function onSelect(p){
-  if (selectedKey.value === p.key){ selectedKey.value=null; infoPos.value.show=false; return }
+  if (selectedKey.value === p.key){ 
+    selectedKey.value=null; 
+    infoPos.value.show=false; 
+    emit('close-gemeinde-info');
+    return 
+  }
   selectedKey.value = p.key
   centerOnKey(p.key, 1.8)
   updateInfoBoxPosition()
@@ -371,8 +377,8 @@ function moveSuggest(dir){ if(!suggestions.value.length) return; suggestIndex.va
 function applySuggest(){ if(!suggestions.value.length) return; selectByName(suggestions.value[suggestIndex.value] || suggestions.value[0]) }
 function selectByName(name){
   searchQuery.value = name; suggestions.value=[]; suggestIndex.value=-1
-  const k = keyForRaw(name); if(!k) return
-  const p = paths.value.find(x=>x.key===k); if(!p) return
+  const k = keyForRaw(name); if(!k) { clearSelection(); return }
+  const p = paths.value.find(x=>x.key===k); if(!p) { clearSelection(); return }
   selectedKey.value = k; centerOnKey(k, 1.8); updateInfoBoxPosition()
 }
 function keyForRaw(raw){ const k0=norm(raw); const k=nameAlias[k0]||k0; return featuresByKey.value.has(k)?k:null }

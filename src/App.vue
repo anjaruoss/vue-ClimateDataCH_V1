@@ -153,6 +153,7 @@ const contentTitleDy = computed(() => 0)
                   :data-dir="dataDirGm"
                   :year="yearGm"
                   @gemeinde-selected="gmSelectedName = $event"
+                  @close-gemeinde-info="gmSelectedName = null"
                 />
               </div>
               <div class="bildlegende">
