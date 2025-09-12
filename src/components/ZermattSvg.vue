@@ -218,7 +218,7 @@ function formatTemp(v, digits = 1) {
         </tspan>
       </text>
 
-      <!-- Gradients: EIN Gradient pro Liniensegment (weiche Übergänge a->b) -->
+      <!-- Gradients: Ein Gradient pro Liniensegment (weiche Übergänge a->b) -->
       <defs v-if="ready">
         <linearGradient
           v-for="s in segments"
@@ -249,17 +249,6 @@ function formatTemp(v, digits = 1) {
           </text>
         </g>
 
-        <!-- Optionale, helle Unterlage für perfekte Übergänge -->
-        <path
-          :d="smoothPath"
-          stroke="#000"
-          opacity="0.06"
-          stroke-width="7"
-          fill="none"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        />
-
         <!-- Datengesteuerte, segmentierte Linie mit Verlaufs-Stroke -->
         <g>
           <line
@@ -284,35 +273,41 @@ function formatTemp(v, digits = 1) {
     </svg>
 
     <!-- "Anschrift" der Grafik -->
-    <div class="hud">
       <div
-        class="title"
-        :style="{ left: leftPx + 'px', top: (topPx + hudOffsetPx + 40*scale) + 'px', fontSize: titleFontPx }"
+        class="linien-title"
+        :style="{ left: leftPx + 'px', top: (topPx + hudOffsetPx + 40*scale) + 'px'}"
       >
         Zermatt · 1971–2018
       </div>
       <div
-        class="subtitle"
-        :style="{ left: leftPx + 'px', top: (topPx + hudOffsetPx + 70*scale) + 'px', fontSize: subtitleFontPx }"
+        class="linien-subtitle"
+        :style="{ left: leftPx + 'px', top: (topPx + hudOffsetPx + 70*scale) + 'px'}"
       >
         Ø Jahrestemperatur
       </div>
     </div>
-  </div>
+
 </template>
 
 <style scoped>
 .chart-wrap { position: relative; width: 100%; height: 100%; }
 .chart-svg  { width: 100%; height: 100%; display: block; }
-.hud { position: absolute; inset: 0; pointer-events: none; }
 
-.title, .subtitle {
+.linien-title {
   position: absolute;
+  font-size: 14px;
   font-weight: 700;
   color: #222;
-  text-shadow: 0 1px 2px rgba(255,255,255,.7);
-  letter-spacing: 0.2px;
+  font-family: "Source Serif 4", ui-serif, Georgia, "Times New Roman", Times, serif;
 }
-.subtitle { font-weight: 600; color: #444; }
-text { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Helvetica Neue"; }
+.linien-subtitle { 
+  position: absolute;
+  font-size: 9px;
+  font-weight: 600; 
+  color: #444; 
+  font-family: "Source Serif 4", ui-serif, Georgia, "Times New Roman", Times, serif;
+  margin-top: 5px;
+}
+
+text { font-family: "Source Serif 4", ui-serif, Georgia, "Times New Roman", Times, serif;}
 </style>

@@ -347,18 +347,19 @@ html, body, #app{
 
 .title{
   font-family: var(--headline-font);
-  font-weight: 800;                 /* Merriweather Bold */
+  font-weight: 700;                 /* Merriweather Bold */
   line-height: 1.25;
   letter-spacing: 0.2px;
   color: #000;
   margin: 0 0 0.4em 0;
   text-align:center;
   margin-bottom: var(--s-1);
+  margin-top: var(--s-3);
 }
 
 h1, h2, h3{
   font-family: var(--headline-font);
-  font-weight: 700;                 /* Merriweather Bold */
+  font-weight: 600;                 /* Merriweather Bold */
   line-height: 1.25;
   letter-spacing: 0.2px;
   color: #000;
@@ -397,9 +398,9 @@ h3{ font-size: clamp(16px, 2.1vw, 22px); font-weight: 700; }
 }
 
 .linien-frame {
-  width: 600px;
-  height: auto;
-  max-width: none;
+  width: 100%;
+  aspect-ratio: 1160 / 470;  /* passend zu vbW/vbH */
+  display: block;
   margin-bottom: var(--s-3);
   margin-top: var(--s-3);
 }
