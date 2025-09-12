@@ -308,7 +308,7 @@ function onSelect(p){
   if (selectedKey.value === p.key){ 
     selectedKey.value=null; 
     infoPos.value.show=false; 
-    emit('close-gemeinde-info');
+    emit('gemeinde-selected','close-gemeinde-info');
     return 
   }
   selectedKey.value = p.key

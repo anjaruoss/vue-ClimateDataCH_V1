@@ -24,7 +24,6 @@ const zermattYear = ref(startYear)
 const biereYear   = ref(startYear)
 
 /* GmMapSvg */
-const dataDirGm = "/data"
 const yearGm    = ref(2018)
 
 /*  GmLinieSvg  */
@@ -64,7 +63,7 @@ async function checkGmData(name) {
     gmHasData.value = false
     return
   }
-  const csv = await d3.csv(`${dataDirGm}/lau_lvl_data_temperatures_ch.csv`, d3.autoType)
+  const csv = await d3.csv(`${dataDir}/lau_lvl_data_temperatures_ch.csv`, d3.autoType)
   const found = csv.some(d => d.CNTR_CODE === 'CH' && d.LAU_LABEL === name && +d.year >= 1971 && d.avg_year != null)
   gmHasData.value = found
 }
@@ -170,7 +169,7 @@ const contentTitleDy = computed(() => 0)
               <!-- GmMapSvg -->
               <div class="map-frame">
                 <GmMapSvg
-                  :data-dir="dataDirGm"
+                  :data-dir="dataDir"
                   :year="yearGm"
                   @gemeinde-selected="gmSelectedName = $event"
                   @close-gemeinde-info="gmSelectedName = null"
@@ -186,7 +185,7 @@ const contentTitleDy = computed(() => 0)
                 <GmLinieSvg
                   :name="gmSelectedName"
                   :year="gmLinieYear"
-                  :data-dir="dataDirGm"
+                  :data-dir="dataDir"
                 />
               </div>
             </article>
