@@ -29,9 +29,9 @@ Es demonstriert zentrale Techniken im Bereich Creative Coding und Data Visualiza
 ## Datengrundlage
 
 **Quelle:**  
-- UERRA Regional Reanalysis (Copernicus / ECMWF)  
-- Aufbereitet von OBC Transeuropa für das European Data Journalism Network (EDJNet)
-- `lau_lvl_data_temperatures_ch.csv` - File
+- [UERRA Regional Reanalysis (Copernicus / ECMWF)](https://cds.climate.copernicus.eu/datasets/reanalysis-uerra-europe-single-levels?tab=overview)
+- Aufbereitet von [OBC Transeuropa](https://www.balcanicaucaso.org) für das [European Data Journalism Network (EDJNet)](https://www.europeandatajournalism.eu)
+- File: `lau_lvl_data_temperatures_ch.csv`
 
 **Zeitraum:**  
 - Jahresverlauf: Temperaturdaten 1971–2018 auf Gemeindeebene
@@ -42,7 +42,7 @@ Es demonstriert zentrale Techniken im Bereich Creative Coding und Data Visualiza
 - Zusätzlich: gemittelte Temperaturen für die Perioden 1961–1970 und 2009–2018 (Dekadenvergleich)
 
 **Geographische Daten**
-- `schweiz_gemeinden.geojson` - Datenquelle
+- File: `schweiz_gemeinden.geojson`
 - Nutzen: Zeichnet die Gemeinde- und Ladesgrenzen der Schweiz und gibt die Gemeinden als Multipolygone aus
 
 ---
