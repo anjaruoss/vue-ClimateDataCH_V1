@@ -39,7 +39,7 @@ Es demonstriert zentrale Techniken im Bereich Creative Coding und Data Visualiza
 
 **Datenstruktur:**  
 - Aggregierte jährliche Durchschnittstemperaturen pro Gemeinde  
-- Zusätzlich: gemittelte Temperaturen für die Perioden 1961–1970 und 2009–2018 (Dekadenvergleich)
+- Gemittelte Temperaturen für die Perioden 1961–1970 und 2009–2018 (Dekadenvergleich)
 
 **Geographische Daten**
 - File: `schweiz_gemeinden.geojson`
@@ -85,3 +85,8 @@ Das Projekt kann mit Netlify unter diesem Link angezeigt werden: https://68c5336
 npm install
 npm i d3
 npm run dev
+
+## Projektstatus
+- Status: Fertiggestellt (Abgabeprojekt)
+- Letzte Aktualisierung: September 2025
+- Version: 1.0
