@@ -14,7 +14,7 @@ Die Nutzer:innen können mit einem Zeit-Scrubber durch die Jahrzehnte navigieren
 
 ---
 
-## Purpose & Goal
+## Ziel
 
 Das Projekt macht komplexe Klimadaten für ein breites Publikum verständlich und veranschaulicht die regional unterschiedlichen Auswirkungen der globalen Erwärmung.  
 Es demonstriert zentrale Techniken im Bereich Creative Coding und Data Visualization:
@@ -31,13 +31,15 @@ Es demonstriert zentrale Techniken im Bereich Creative Coding und Data Visualiza
 **Quelle:**  
 - UERRA Regional Reanalysis (Copernicus / ECMWF)  
 - Aufbereitet von OBC Transeuropa für das European Data Journalism Network (EDJNet)
+- `lau_lvl_data_temperatures_ch.csv` - File
 
 **Zeitraum:**  
-- Temperaturdaten 1961–2018 auf Gemeindeebene
+- Jahresverlauf: Temperaturdaten 1971–2018 auf Gemeindeebene
+- Dekadenvergleich: Temperaturdaten 1961–1970 vs. 2009-2018 auf Gemeindeebene
 
 **Datenstruktur:**  
 - Aggregierte jährliche Durchschnittstemperaturen pro Gemeinde  
-- Zusätzlich: gemittelte Temperaturen für die Perioden 1961–1970 und 2009–2018 (Langzeitvergleich)
+- Zusätzlich: gemittelte Temperaturen für die Perioden 1961–1970 und 2009–2018 (Dekadenvergleich)
 
 **Geographische Daten**
 - `schweiz_gemeinden.geojson` - Datenquelle
@@ -49,15 +51,15 @@ Es demonstriert zentrale Techniken im Bereich Creative Coding und Data Visualiza
 
 Die Visualisierung besteht aus mehreren Komponenten:
 
-- `ChMapSvg.vue` — Interaktive Karte mit Jahresverlauf (1971–2018)
-- `GmMapSvg.vue` — Vergleichskarte (1961–1970 vs. 2009–2018)
+- `ChMapSvg.vue` — Karte mit Jahresverlauf (1971–2018)
+- `GmMapSvg.vue` — Interaktive Karte mit Dekadenvergleich (1961–1970 vs. 2009–2018)
 - `ZermattSvg.vue`, `BiereSvg.vue`, `GmLinieSvg.vue` — Liniendiagramme für Einzelgemeinden
-- `ScrollProgress.vue`, `Annotation.vue` — Scrollytelling-Funktionalität
+- `ScrollProgress.vue` — Anzeige der Position im Scrollytelling
 - `Scrubber.ts` — Zeit-Scrubber zur Scrollytelling-Navigation durch die Jahre
 
 **Techniken:**
-- **p5.js** für Canvas-Rendering und Interaktion
-- **D3.js** für Datenverarbeitung, Geo-Projektion und Skalen
+- **p5.js** für Canvas-Rendering und Interaktion der Karten
+- **D3.js** für Datenverarbeitung, Geo-Projektion und Skalen der Karten
 - **Vue.js** als Framework für Komponentenstruktur und Interface
 - **TypeScript** für Logik (Scrubber)
 
