@@ -305,7 +305,7 @@ function onLeave(){ hoveredKey.value = null; tooltip.value.show = false }
 const selectedRawName = computed(()=> nameByKey.value.get(selectedKey.value) || '')
 const selectedVariationDisplay = computed(()=>{
   const v = variationByKey.value.get(selectedKey.value)
-  return (v != null && !isNaN(v)) ? `${Math.round(v*10)/10} °C` : 'Keine Daten'
+  return (v != null && !isNaN(v)) ? ` ${Math.round(v*10)/10} Δ °C` : 'Keine Daten'
 })
 function onSelect(p){
   if (selectedKey.value === p.key){ 
@@ -436,7 +436,7 @@ function keyForRaw(raw){ const k0=norm(raw); const k=nameAlias[k0]||k0; return f
   <div class="hud" v-if="ready" :style="{ '--uiScale': uiScaleCss, '--zoomScale': zoomScaleCss }" ref="hudEl">
       <!-- Legende (Option A) -->
       <div class="hud-legend" :style="{ right: 'var(--legendOffset)', top: 'var(--legendOffset)' }">
-        <div class="legend-label" :style="{ fontSize: legendFontPx }">{{ domainMax.toFixed(1) }} °C</div>
+        <div class="legend-label" :style="{ fontSize: legendFontPx }">{{ domainMax.toFixed(1) }} Δ°C</div>
         <svg class="legend-bar" :width="legendBarW" :height="legendBarH" viewBox="0 0 16 180" preserveAspectRatio="none">
           <defs>
             <linearGradient :id="legendId" x1="0" y1="0" x2="0" y2="1">
@@ -445,7 +445,7 @@ function keyForRaw(raw){ const k0=norm(raw); const k=nameAlias[k0]||k0; return f
           </defs>
           <rect x="0" y="0" width="16" height="180" :fill="`url(#${legendId})`" rx="2" />
         </svg>
-        <div class="legend-label" :style="{ fontSize: legendFontPx }">{{ domainMin.toFixed(1) }} °C</div>
+        <div class="legend-label" :style="{ fontSize: legendFontPx }">{{ domainMin.toFixed(1) }} Δ°C</div>
       </div>
 
       <!-- Suche -->
@@ -482,7 +482,7 @@ function keyForRaw(raw){ const k0=norm(raw); const k=nameAlias[k0]||k0; return f
     <!-- Info-Box -->
     <div v-if="selectedKey && infoPos.show" class="gm-infobox" :style="{ left: infoPos.x + 'px', top: infoPos.y + 'px' }">
       <div class="info-name">{{ selectedRawName }}</div>
-      <div class="info-line">Temperaturanstieg zwischen den 1960er-Jahren und 2009–2018:</div>
+      <div class="info-line">Dekadenvergleich 1961–1970 vs. 2009–2018:</div>
       <div class="info-value">{{ selectedVariationDisplay }}</div>
     </div>
   </div>
