@@ -91,5 +91,5 @@ npm run dev
 
 ## Projektstatus
 - Status: Fertiggestellt (Abgabeprojekt)
-- Letzte Aktualisierung: September 2025
+- Letzte Aktualisierung: 18. September 2025
 - Version: 1.0
