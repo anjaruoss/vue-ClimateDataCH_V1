@@ -488,14 +488,14 @@ function keyForRaw(raw){ const k0=norm(raw); const k=nameAlias[k0]||k0; return f
   </div>
 </template>
 
-<style scoped>
+<style>
 .gm-wrap{ position: relative; width: 100%; height: 100%; }
 .gm-svg{ width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
 .gm-svg.panning{ cursor: grabbing; }
 
 .gm-wrap.is-expanded{
   position: fixed; left: 50%; top: 50vh; transform: translate(-50%, -50%);
-  width: min(98vw, 1200px); height: min(90vh, 500px);
+  width: min(98vw, 1200px); height: min(150vh, 500px);
   z-index: 1000; background: #fff; border-radius:5px; box-shadow: 0 8px 32px rgba(0,0,0,0.18);
 }
 

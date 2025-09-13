@@ -67,7 +67,7 @@ Die Visualisierung besteht aus mehreren Komponenten:
 
 ## Live Demo
 
-Das Projekt kann mit Netlify unter diesem Link angezeigt werden: https://68c5336d58aae224e1f1c351--whimsical-dieffenbachia-2e6d64.netlify.app
+Das Projekt kann mit Netlify unter diesem Link angezeigt werden: https://vue-climatedatach-v1.netlify.app/
 
 ---
 
