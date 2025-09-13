@@ -7,17 +7,15 @@ Visualisierung der Temperaturentwicklung in allen Schweizer Gemeinden seit den 1
 
 ## Projektbeschreibung
 
-Dieses Projekt zeigt, wie sich die durchschnittlichen Jahrestemperaturen in der Schweiz seit den 1960er-Jahren auf Gemeindeebene verändert haben.  
-Eine interaktive Karte visualisiert den Temperaturverlauf von 1971 bis 2018. Ergänzende Liniendiagramme machen den Verlauf einzelner Gemeinden sichtbar. Eine zweite Karte zeigt den langfristigen Unterschied zwischen den 1960er-Jahren (1961–1970) und der Periode 2009–2018.
+Dieses Projekt zeigt, wie sich die durchschnittlichen Jahrestemperaturen in der Schweiz seit den 1960er-Jahren auf Gemeindeebene verändert haben. Eine Karte visualisiert den Temperaturverlauf von 1971 bis 2018. Ergänzende Liniendiagramme machen den Verlauf einzelner Gemeinden sichtbar. Eine zweite interaktive Karte zeigt den langfristigen Unterschied zwischen den 1960er-Jahren (1961–1970) und der Periode 2009–2018.
 
-Die Nutzer:innen können mit einem Zeit-Scrubber durch die Jahrzehnte navigieren, eigene Gemeinden auswählen und im Scrollytelling-Modus besonders betroffene Regionen erkunden.
+Die Nutzende können im Scrollytelling-Modus durch die Jahrzehnte navigieren, besonders betroffene Regionen erkunden und eigene Gemeinden auswählen.
 
 ---
 
 ## Ziel
 
-Das Projekt macht komplexe Klimadaten für ein breites Publikum verständlich und veranschaulicht die regional unterschiedlichen Auswirkungen der globalen Erwärmung.  
-Es demonstriert zentrale Techniken im Bereich Creative Coding und Data Visualization:
+Das Projekt macht komplexe Klimadaten für ein breites Publikum verständlich und veranschaulicht die regional unterschiedlichen Auswirkungen der globalen Erwärmung. Dabei nutzt es zentrale Techniken im Bereich Creative Coding und Data Visualization:
 
 - Verarbeitung und Visualisierung realer Klimadaten
 - Kombination von geographischen und zeitlichen Datendimensionen
