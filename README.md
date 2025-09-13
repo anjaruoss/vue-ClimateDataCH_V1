@@ -86,6 +86,8 @@ npm install
 npm i d3
 npm run dev
 
+---
+
 ## Projektstatus
 - Status: Fertiggestellt (Abgabeprojekt)
 - Letzte Aktualisierung: September 2025
