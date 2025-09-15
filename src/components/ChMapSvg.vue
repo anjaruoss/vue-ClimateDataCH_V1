@@ -30,47 +30,33 @@ const domainMax    = ref(1)
 const norm = s => (s || '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
 const nameAlias = {}
 
-/* ===== Eigene (diskrete) Farbpalette =====
-   Blau → hell um 0 → Rot; 10 Stufen (kannst du beliebig anpassen)
-*/
+const NO_DATA = '#b0b0b0'
+
+/* ===== Eigene Farbpalette =====*/
 const PALETTE = [
-  "#0e2741", // sehr kalt
-  "#1f5a92",
-  "#5497c0",
-  "#b3cfdd",
-  "#f6f6f6", // Nähe 0
-  "#f4d2a0",
-  "#e99a66",
-  "#de6d4d",
-  "#c83f3e",
-  "#6f0b25"  // sehr warm
+  "#0e2741", "#153d6a", "#1f5a92", "#2f79af", "#5497c0",
+  "#80b4cf", "#b3cfdd", "#c9dbe6", "#dfe6ef", "#e8d6bf",
+  "#efb884", "#e47f57", "#de6d4d", "#d35245", "#c83f3e",
+  "#a71f3a", "#6f0b25"
 ]
 
-/* Baut eine Schwellen-Skala mit „schönen“ Grenzen:
-   - Wir erzeugen ~N Ticks inkl. Min/Max und nehmen die inneren als Thresholds.
-   - Die Range-Länge muss thresholds.length + 1 entsprechen.
-*/
+// LCH wenn verfügbar, sonst Lab – als sanfter Interpolator
+const interpolateBase = d3.interpolateLch || d3.interpolateLab
+const interpolateCustom = d3.piecewise(interpolateBase, PALETTE)
+
+/* (noch vorhanden, aber ungenutzt – lassen wir für minimale Änderungen drin) */
 function buildThresholdScale(min, max, palette = PALETTE){
-  // Falls Daten degeneriert sind (min==max), gib einfach die mittlere Palette zurück.
   if (!Number.isFinite(min) || !Number.isFinite(max) || min === max){
     const mid = palette[Math.floor(palette.length/2)] ?? "#ccc"
     return d3.scaleThreshold().domain([min]).range([mid, mid])
   }
-
   const n = palette.length
-  // ungefähr n „schöne“ Marken inkl. Endpunkte
   const ticks = d3.ticks(min, max, n)
-  // innere Marken als Schwellen verwenden (ohne min & max)
   const thresholds = ticks.slice(1, -1)
-
-  // falls d3.ticks zu wenige/zu viele geliefert hat, justieren:
-  // Sorge dafür, dass range = thresholds.length + 1
   let range = palette
   if (thresholds.length + 1 !== palette.length){
-    // Re-sample Palette auf passende Länge
     range = d3.quantize(t => d3.interpolateRgbBasis(palette)(t), thresholds.length + 1)
   }
-
   return d3.scaleThreshold().domain(thresholds).range(range)
 }
 
@@ -107,7 +93,7 @@ const legendBarW   = computed(() => Math.round(clamp(design.legendW  * hudScale.
 const legendBarH   = computed(() => Math.round(clamp(design.legendH  * hudScale.value, 80, 300)))
 const legendFontPx = computed(() => Math.round(clamp(design.legendFont* hudScale.value, 9, 18)) + 'px')
 
-// Legenden-Gradient (funktioniert auch mit diskreter Skala → Streifen)
+// Legenden-Gradient
 const legendId = `legend-${Math.random().toString(36).slice(2)}`
 function legendValue(p){ const t=p/100; return domainMax.value*(1-t) + domainMin.value*t }
 
@@ -116,17 +102,13 @@ onMounted(async () => {
   const geo = await d3.json(`${props.dataDir}/gemeinden.geojson`)
 
   const featsAll = (geo?.features ?? [])
-
   const feats = featsAll.filter(f => {
     const gt = f?.geometry?.type
     return gt === 'Polygon' || gt === 'MultiPolygon'
   })
 
   const fc = { type: 'FeatureCollection', features: feats }
-  const bounds = d3.geoBounds(fc)
-
-  projection = d3.geoMercator()
-  projection.fitExtent([contentMin, contentMax], fc)
+  projection = d3.geoMercator().fitExtent([contentMin, contentMax], fc)
   geoPath.projection(projection)
 
   paths.value = feats.map(f => {
@@ -135,9 +117,11 @@ onMounted(async () => {
     return d ? { d, f, key } : null
   }).filter(Boolean)
 
+  // *** Parser fix: 0 bleibt 0, nur leere/ungültige Werte → null
   const rows = await d3.csv(`${props.dataDir}/lau_lvl_data_temperatures_ch.csv`, d => {
     if (d.CNTR_CODE !== 'CH') return null
-    return { year:+d.year, LAU_LABEL:d.LAU_LABEL, avg_year: d.avg_year ? +d.avg_year : null }
+    const v = d.avg_year === "" || d.avg_year == null ? null : +d.avg_year
+    return { year:+d.year, LAU_LABEL:d.LAU_LABEL, avg_year: Number.isFinite(v) ? v : null }
   })
 
   byYearByName.value = d3.rollup(
@@ -160,17 +144,29 @@ onMounted(async () => {
   const ext = d3.extent(allVals)
   domainMin.value = ext[0]; domainMax.value = ext[1]
 
-  // NEU: diskrete Skala mit schönen Schwellen
-  colorScale.value = buildThresholdScale(domainMin.value, domainMax.value, PALETTE)
+  // *** Kontinuierliche Skala mit sanfter LCH/Lab-Interpolation
+  colorScale.value = d3.scaleSequential(interpolateCustom)
+    .domain([domainMin.value, domainMax.value])
+    .clamp(true)
 })
+
+/* Seen erkennen */
+function isLakeFeature(f){
+  const p = f?.properties || {}
+  const gem = +p.GEM_FLAECH || 0
+  const see = +p.SEE_FLAECH || 0
+  const pop = +p.EINWOHNERZ || 0
+  return see > 0 && Math.abs(gem - see) < 1e-9 && pop === 0
+}
 
 /* ===== Farbe je Feature & Jahr ===== */
 function fillFor(f) {
-  if (!colorScale.value) return '#c8c8c8'
-  const m = byYearByName.value.get(+props.year); if (!m) return '#c8c8c8'
+  if (isLakeFeature(f)) return '#ffffff'   // Seen: weiss
+  if (!colorScale.value) return NO_DATA
+  const m = byYearByName.value.get(+props.year); if (!m) return NO_DATA
   let k = norm(f?.properties?.NAME || f?.properties?.name); if (nameAlias[k]) k = nameAlias[k]
   const val = m.get(k)
-  return val != null ? colorScale.value(val) : '#c8c8c8'
+  return Number.isFinite(val) ? colorScale.value(val) : NO_DATA
 }
 </script>
 
@@ -190,9 +186,8 @@ function fillFor(f) {
           :key="p.key"
           :d="p.d"
           :fill="fillFor(p.f)"
-          stroke="#fff"
-          stroke-width="0.05"
-          vector-effect="non-scaling-stroke"
+          stroke="none"
+          stroke-width="0"
         />
       </g>
     </svg>
@@ -211,7 +206,6 @@ function fillFor(f) {
         <svg class="legend-bar" :width="legendBarW" :height="legendBarH" viewBox="0 0 16 180" preserveAspectRatio="none">
           <defs>
             <linearGradient :id="legendId" x1="0" y1="0" x2="0" y2="1">
-              <!-- Diskrete Skala → Streifen; Sample bei 0..100% passt weiterhin -->
               <stop v-for="i in 101" :key="i" :offset="(i-1)/100" :stop-color="colorScale(legendValue(i-1))" />
             </linearGradient>
           </defs>
@@ -225,7 +219,7 @@ function fillFor(f) {
 
 <style scoped>
 .map-wrap { position: relative; width: 100%; height: 100%; }
-.map-svg  { width: 100%; height: 100%; display: block; }
+.map-svg  { width: 100%; height: 100%; display: block; stroke: none; stroke-width: 0; }
 
 .hud { position: absolute; inset: 0; pointer-events: none; }
 
