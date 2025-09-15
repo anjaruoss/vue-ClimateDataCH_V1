@@ -38,7 +38,7 @@ const scale = computed(() => Math.min(frameW.value / vbW, frameH.value / vbH))
 const leftPx = computed(() => Math.round(20 * scale.value))
 const topPx  = computed(() => Math.round(14 * scale.value))
 
-/* Anschrift 20px tiefer */
+/* Anschrift tiefer */
 const hudOffsetPx = computed(() => Math.round(20 * scale.value))
 
 const titleFontPx    = computed(() => Math.round(16 * scale.value) + 'px')
@@ -53,16 +53,22 @@ const ready = computed(() => data.value.length > 1)
 const norm = (s) => (s || '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
 
 onMounted(async () => {
-  const csv = await d3.csv(`${props.dataDir}/lau_lvl_data_temperatures_ch.csv`, d3.autoType)
+  // Robuster Parser: 0 bleibt 0, leere/ungültige → null
+  const csv = await d3.csv(`${props.dataDir}/lau_lvl_data_temperatures_ch.csv`, d => {
+    if (d.CNTR_CODE !== 'CH') return null
+    const v = d.avg_year === "" || d.avg_year == null ? null : +d.avg_year
+    return { CNTR_CODE: d.CNTR_CODE, LAU_LABEL: d.LAU_LABEL, year: +d.year, avg_year: Number.isFinite(v) ? v : null }
+  })
   rows.value = csv
+
   data.value = csv
     .filter(d =>
-      d.CNTR_CODE === 'CH' &&
       d.LAU_LABEL === 'Zermatt' &&
-      +d.year >= 1971 &&
+      d.year >= 1971 &&
+      d.year <= 2018 &&
       d.avg_year != null
     )
-    .map(d => ({ year: +d.year, avg: +d.avg_year }))
+    .map(d => ({ year: d.year, avg: d.avg_year }))
     .sort((a, b) => d3.ascending(a.year, b.year))
 })
 
@@ -124,26 +130,35 @@ function cardinalSplinePath(points, tension = 0.15) {
   return path.join(' ')
 }
 
- /* ===== Datenbasirte Farbskala ===== */
- const globalExtent = computed(() => {
-   if (!rows.value?.length) return [0, 1]
-   const vals = rows.value
-     .filter(d =>
-       d.CNTR_CODE === 'CH' &&
-       d.avg_year != null &&
-       +d.year >= 1971 && +d.year <= 2018
-    )
-     .map(d => +d.avg_year)
-   const ext = d3.extent(vals)
-   return (ext[0] == null) ? [0,1] : ext
- })
+/* ===== Gemeinsame Domain für die Farbe ===== */
+const globalExtent = computed(() => {
+  if (!rows.value?.length) return [0, 1]
+  const vals = rows.value
+    .filter(d => d.avg_year != null && d.year >= 1971 && d.year <= 2018)
+    .map(d => d.avg_year)
+  const ext = d3.extent(vals)
+  return (ext[0] == null) ? [0, 1] : ext
+})
 
- const colorScaleVal = computed(() =>
-   d3.scaleSequential()
-     .domain(globalExtent.value) // <— gemeinsame Domain!
-    .interpolator(d3.interpolateTurbo)
- )
+/* ===== Farb-Logik ===== */
 
+/* Eigene Farbpalette */
+const PALETTE = [
+  "#0e2741", "#153d6a", "#1f5a92", "#2f79af", "#5497c0",
+  "#80b4cf", "#b3cfdd", "#c9dbe6", "#dfe6ef", "#e8d6bf",
+  "#efb884", "#e47f57", "#de6d4d", "#d35245", "#c83f3e",
+  "#a71f3a", "#6f0b25"
+]
+
+const interpolateBase = d3.interpolateLch || d3.interpolateLab
+const interpolateCustom = d3.piecewise(interpolateBase, PALETTE)
+
+/* Kontinuierliche Skala (geclamped), gemeinsame Domain */
+const colorScaleVal = computed(() =>
+  d3.scaleSequential(interpolateCustom)
+    .domain(globalExtent.value)  // gleiche Domain wie die Karte
+    .clamp(true)
+)
 
 /* ===== Segmente (für Gradients) ===== */
 const segGradUID = `seg-${Math.random().toString(36).slice(2)}`
@@ -152,6 +167,7 @@ const segments = computed(() => {
   for (let i = 0; i < data.value.length - 1; i++) {
     const a = data.value[i]
     const b = data.value[i + 1]
+    if (!Number.isFinite(a.avg) || !Number.isFinite(b.avg)) continue
     out.push({
       i, a, b,
       x1: xScale(a.year), y1: yScale(a.avg),
@@ -273,20 +289,19 @@ function formatTemp(v, digits = 1) {
     </svg>
 
     <!-- "Anschrift" der Grafik -->
-      <div
-        class="linien-title"
-        :style="{ left: leftPx + 'px', top: (topPx + hudOffsetPx + 40*scale) + 'px'}"
-      >
-        Zermatt · 1971–2018
-      </div>
-      <div
-        class="linien-subtitle"
-        :style="{ left: leftPx + 'px', top: (topPx + hudOffsetPx + 70*scale) + 'px'}"
-      >
-        Ø Jahrestemperatur
-      </div>
+    <div
+      class="linien-title"
+      :style="{ left: leftPx + 'px', top: (topPx + hudOffsetPx + 40*scale) + 'px'}"
+    >
+      Zermatt · 1971–2018
     </div>
-
+    <div
+      class="linien-subtitle"
+      :style="{ left: leftPx + 'px', top: (topPx + hudOffsetPx + 70*scale) + 'px'}"
+    >
+      Ø Jahrestemperatur
+    </div>
+  </div>
 </template>
 
 <style scoped>
@@ -300,14 +315,14 @@ function formatTemp(v, digits = 1) {
   color: #222;
   font-family: "Source Serif 4", ui-serif, Georgia, "Times New Roman", Times, serif;
 }
-.linien-subtitle { 
+.linien-subtitle {
   position: absolute;
   font-size: 9px;
-  font-weight: 600; 
-  color: #444; 
+  font-weight: 600;
+  color: #444;
   font-family: "Source Serif 4", ui-serif, Georgia, "Times New Roman", Times, serif;
   margin-top: 5px;
 }
 
-text { font-family: "Source Serif 4", ui-serif, Georgia, "Times New Roman", Times, serif;}
+text { font-family: "Source Serif 4", ui-serif, Georgia, "Times New Roman", Times, serif; }
 </style>
