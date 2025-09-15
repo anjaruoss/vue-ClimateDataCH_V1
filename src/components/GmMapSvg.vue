@@ -11,8 +11,8 @@ const props = defineProps({
   searchPlaceholder: { type: String, default: 'Gemeinde suchen …' },
   minZoom:   { type: Number,  default: 0.5 },
   maxZoom:   { type: Number,  default: 8 },
-  uiScale:   { type: Number,  default: 1.0 },   // weiterhin für Search/Buttons
-  zoomScale: { type: Number,  default: 1.0 },   // weiterhin für Buttons
+  uiScale:   { type: Number,  default: 1.0 },
+  zoomScale: { type: Number,  default: 1.0 },
 })
 
 /* ViewBox & Layout */
@@ -51,8 +51,9 @@ const variationByKey = ref(new Map())
 const colorScale   = ref(null)
 const domainMin    = ref(0)
 const domainMax    = ref(1)
+const NO_DATA = '#b0b0b0'
 
-/* ===== UI-Skalierung (bestehend) ===== */
+/* ===== UI-Skalierung ===== */
 const internalScale = ref(1)
 function updateUiScale(){
   const r = svgEl.value?.getBoundingClientRect()
@@ -64,7 +65,7 @@ const zoomScaleNum = computed(()=>Math.min(1.8, Math.max(0.6,  internalScale.val
 const uiScaleCss   = computed(()=>uiScaleNum.value.toFixed(3))
 const zoomScaleCss = computed(()=>zoomScaleNum.value.toFixed(3))
 
-/* ===== Legende (Option A – viewBox-basiert, unabhängig von uiScale) ===== */
+/* ===== Legende ===== */
 const hudScaleLegend = computed(() => Math.max(0.6, Math.min(2.0, internalScale.value)))
 const clamp = (x,a,b) => Math.min(b, Math.max(a, x))
 const legendBarW = computed(()=> Math.round(clamp(8   * hudScaleLegend.value, 10, 36)))
@@ -73,7 +74,7 @@ const legendFontPx = computed(()=> Math.round(clamp(12 * hudScaleLegend.value, 1
 const legendId = `legend-${Math.random().toString(36).slice(2)}`
 function legendValue(p){ const t=p/100; return domainMax.value*(1-t)+domainMin.value*t }
 
-// (nur für Position im Layout – bestehende Offsets weiterverwenden)
+// (nur Position)
 const fitBtnScale   = computed(() => isExpanded.value ? 0.9 : 1.0)
 const closeBtnScale = computed(() => isExpanded.value ? 1.1 : 1.2)
 const legendOffset  = computed(() => isExpanded.value ? '38px' : '18px')
@@ -82,7 +83,7 @@ const searchOffset  = computed(() => isExpanded.value ? '38px' : '18px')
 /* Zoom & Pan */
 const zoomK = ref(1), panX = ref(0), panY = ref(0)
 
-/* „Hand“-Pan (Pointer Events) */
+/* „Hand“-Pan */
 const isPanning = ref(false)
 let lastClientX = 0, lastClientY = 0
 let downX = 0, downY = 0, downTime = 0
@@ -131,7 +132,7 @@ function hitSelectAt(clientX, clientY){
   clearSelection()
 }
 
-/* Trackpad-Pinch (wheel + ctrlKey) */
+/* Trackpad-Pinch */
 function onWheel(e){
   if (!e.ctrlKey) return
   e.preventDefault()
@@ -157,6 +158,16 @@ function zoomAtCss(clientX, clientY, factor){
 const norm = s => (s || '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
 const nameAlias = {}
 
+/* ===== Farbpalette + Interpolator ===== */
+const PALETTE = [
+  "#0e2741", "#153d6a", "#1f5a92", "#2f79af", "#5497c0",
+  "#80b4cf", "#b3cfdd", "#c9dbe6", "#dfe6ef", "#e8d6bf",
+  "#efb884", "#e47f57", "#de6d4d", "#d35245", "#c83f3e",
+  "#a71f3a", "#6f0b25"
+]
+const interpolateBase = d3.interpolateLch || d3.interpolateLab
+const interpolateCustom = d3.piecewise(interpolateBase, PALETTE)
+
 /* Laden */
 let ro
 function onWindowResize(){ updateUiScale(); updateInfoBoxPosition() }
@@ -166,14 +177,14 @@ onMounted(async () => {
     d3.json(`${props.dataDir}/gemeinden.geojson`),
     d3.csv(`${props.dataDir}/lau_lvl_data_temperatures_ch.csv`, d => {
       const yr=+d.year
-      if (d.CNTR_CODE==='CH' && yr===+props.year) return { LAU_LABEL:d.LAU_LABEL, variation:d.variation_periods!==''?+d.variation_periods:null }
+      const vv = d.variation_periods === "" || d.variation_periods == null ? null : +d.variation_periods
+      if (d.CNTR_CODE==='CH' && yr===+props.year) return { LAU_LABEL:d.LAU_LABEL, variation: Number.isFinite(vv) ? vv : null }
       return null
     })
   ])
   const rows = raw.filter(Boolean)
 
   const featsAll = (geo?.features ?? [])
-
   const feats = featsAll.filter(f =>
     f?.geometry?.type === 'Polygon' || f?.geometry?.type === 'MultiPolygon'
   )
@@ -197,7 +208,10 @@ onMounted(async () => {
   const vals = Array.from(variationByKey.value.values()).filter(v => v!=null && !isNaN(v))
   const ext = d3.extent(vals)
   domainMin.value = ext[0]; domainMax.value = ext[1]
-  colorScale.value = d3.scaleSequential().domain(ext).interpolator(d3.interpolateTurbo)
+
+  colorScale.value = d3.scaleSequential(interpolateCustom)
+    .domain(ext)
+    .clamp(true)
 
   const P=[], fByKey=new Map(), nByKey=new Map()
   for (const f of feats){
@@ -258,7 +272,6 @@ function onBackgroundClick(){ clearSelection() }
 function onDocumentClick(e){
   const root = wrapEl.value
   if (!root) return
-  // Klick im HUD (inkl. Suchfeld) soll Vergrößerung nicht schließen
   if (hudEl.value && hudEl.value.contains(e.target)) return
   if (!root.contains(e.target)) {
     if (isExpanded.value) closeExpanded(); else clearSelection()
@@ -276,10 +289,20 @@ function onKeydown(e){
   }
 }
 
+/* ===== Seen erkennen (wie in ChMapSvg) ===== */
+function isLakeFeature(f){
+  const p = f?.properties || {}
+  const gem = +p.GEM_FLAECH || 0
+  const see = +p.SEE_FLAECH || 0
+  const pop = +p.EINWOHNERZ || 0
+  return see > 0 && Math.abs(gem - see) < 1e-9 && pop === 0
+}
+
 /* Farben */
-function fillForKey(k){
-  const v = variationByKey.value.get(k)
-  return (v != null && !isNaN(v)) ? colorScale.value(v) : '#c8c8c8'
+function fillForPath(p){
+  if (isLakeFeature(p.f)) return '#ffffff'   // Seen: weiss
+  const v = variationByKey.value.get(p.key)
+  return Number.isFinite(v) ? colorScale.value(v) : NO_DATA
 }
 
 /* Tooltip/Hover */
@@ -317,7 +340,6 @@ function onSelect(p){
   selectedKey.value = p.key
   centerOnKey(p.key, 1.8)
   updateInfoBoxPosition()
-  // Emit event with the selected Gemeinde name or key
   emit('gemeinde-selected', nameByKey.value.get(p.key) || p.key)
 }
 function updateInfoBoxPosition(){
@@ -417,7 +439,7 @@ function keyForRaw(raw){ const k0=norm(raw); const k=nameAlias[k0]||k0; return f
             v-for="p in paths"
             :key="p.key"
             :d="p.d"
-            :fill="fillForKey(p.key)"
+            :fill="fillForPath(p)"
             :data-key="p.key"
             :class="{ 'is-hovered': hoveredKey === p.key && selectedKey !== p.key, 'is-selected': selectedKey === p.key }"
             stroke="#fff"
@@ -433,8 +455,8 @@ function keyForRaw(raw){ const k0=norm(raw); const k=nameAlias[k0]||k0; return f
     </svg>
 
     <!-- HUD -->
-  <div class="hud" v-if="ready" :style="{ '--uiScale': uiScaleCss, '--zoomScale': zoomScaleCss }" ref="hudEl">
-      <!-- Legende (Option A) -->
+    <div class="hud" v-if="ready" :style="{ '--uiScale': uiScaleCss, '--zoomScale': zoomScaleCss }" ref="hudEl">
+      <!-- Legende -->
       <div class="hud-legend" :style="{ right: 'var(--legendOffset)', top: 'var(--legendOffset)' }">
         <div class="legend-label" :style="{ fontSize: legendFontPx }">{{ domainMax.toFixed(1) }} Δ°C</div>
         <svg class="legend-bar" :width="legendBarW" :height="legendBarH" viewBox="0 0 16 180" preserveAspectRatio="none">
@@ -506,7 +528,7 @@ path.is-selected{ stroke:#000; stroke-width:1.6; filter:drop-shadow(0 0 3px rgba
 /* HUD */
 .hud{ position:absolute; inset:0; pointer-events:none; }
 
-/* Legende – ohne CSS-Scale-Variablen, Größe kommt aus JS */
+/* Legende */
 .hud-legend{
   position:absolute;
   display:flex; flex-direction:column; align-items:center;
@@ -579,7 +601,7 @@ path.is-selected{ stroke:#000; stroke-width:1.6; filter:drop-shadow(0 0 3px rgba
 .gm-infobox{
   position:absolute; transform:translate(-50%,-100%);
   background:rgba(2, 25, 72, 0.8); color:#fff; padding:10px 14px;
-  border-radius:10px; max-width:280px; box-shadow:0 6px 18px rgba(0,0,0,.25);
+  border-radius:10px; max-width:280px; box-shadow: 0 6px 18px rgba(0,0,0,.25);
 }
 .info-name{ font-weight:700; margin-bottom:4px; }
 .info-line{ font-size:13px; opacity:.95; }
