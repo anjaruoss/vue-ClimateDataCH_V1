@@ -247,7 +247,7 @@ function formatTemp(v, digits = 1) {
       <!-- Grid + Achsen -->
       <g v-if="ready">
         <g v-for="(t, i) in yTicks" :key="'y-'+i">
-          <line :x1="plotL" :x2="plotR" :y1="yScale(t)" :y2="yScale(t)" stroke="#000" opacity="0.08"/>
+          <line :x1="plotL" :x2="plotR" :y1="yScale(t)" :y2="yScale(t)" />
           <text :x="plotL - 10" :y="yScale(t)" text-anchor="end" dominant-baseline="middle" :font-size="tickFontPx * 1.3" fill="#4b4b4b">
             {{ t.toFixed(0) }}°C
           </text>

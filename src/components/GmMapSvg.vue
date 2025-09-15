@@ -268,22 +268,30 @@ function clearSelection(){
   tooltip.value.show = false
   emit('close-gemeinde-info')
 }
-function onBackgroundClick(){ clearSelection() }
+function onBackgroundClick(){ 
+  closeSearch()
+  clearSelection() 
+}
 function onDocumentClick(e){
   const root = wrapEl.value
   if (!root) return
-  if (hudEl.value && hudEl.value.contains(e.target)) return
+  const inSvg    = !!svgEl.value && (svgEl.value === e.target || svgEl.value.contains(e.target))
+  const inSearch = !!searchWrapEl.value && searchWrapEl.value.contains(e.target)
+  if (!inSearch) closeSearch()
+  if (hudEl.value && hudEl.value.contains(e.target) && inSearch) return
   if (!root.contains(e.target)) {
     if (isExpanded.value) closeExpanded(); else clearSelection()
     return
   }
-  if ( isExpanded.value && svgEl.value && !svgEl.value.contains(e.target)) {
+  if ( isExpanded.value && svgEl.value && !inSvg ) {
     closeExpanded()
     return
   }
 }
+
 function onKeydown(e){
   if (e.key === 'Escape'){
+    closeSearch()
     if (isExpanded.value){ closeExpanded(); return }
     clearSelection()
   }
@@ -387,6 +395,9 @@ function lockScroll(on){
 }
 
 /* Suche */
+const searchInputEl = ref(null)
+const searchWrapEl  = ref(null)
+
 function onSearchInput(){
   const q = norm(searchQuery.value)
   if (!q){ suggestions.value=[]; suggestIndex.value=-1; return }
@@ -407,7 +418,17 @@ function selectByName(name){
   selectedKey.value = k; centerOnKey(k, 1.8); updateInfoBoxPosition()
   emit('gemeinde-selected', nameByKey.value.get(k) || k)
 }
+
 function keyForRaw(raw){ const k0=norm(raw); const k=nameAlias[k0]||k0; return featuresByKey.value.has(k)?k:null }
+function closeSearch(){
+  suggestions.value = []
+  suggestIndex.value = -1
+  // Fokus wegnehmen (optional)
+  if (document.activeElement === searchInputEl.value) {
+    searchInputEl.value.blur()
+  }
+}
+
 </script>
 
 <template>
@@ -440,15 +461,19 @@ function keyForRaw(raw){ const k0=norm(raw); const k=nameAlias[k0]||k0; return f
             :key="p.key"
             :d="p.d"
             :fill="fillForPath(p)"
-            :data-key="p.key"
-            :class="{ 'is-hovered': hoveredKey === p.key && selectedKey !== p.key, 'is-selected': selectedKey === p.key }"
-            stroke="#fff"
-            stroke-width="0.4"
+            :data-key="isLakeFeature(p.f) ? null : p.key"
+            :class="{
+              'is-lake': isLakeFeature(p.f),
+              'is-hovered': !isLakeFeature(p.f) && hoveredKey === p.key && selectedKey !== p.key,
+              'is-selected': !isLakeFeature(p.f) && selectedKey === p.key
+            }"
+            :stroke="isLakeFeature(p.f) ? 'none' : '#fff'"
+            :stroke-width="isLakeFeature(p.f) ? 0 : 0.4"
             vector-effect="non-scaling-stroke"
-            @mouseenter="onEnter(p, $event)"
-            @mousemove="onMove($event)"
-            @mouseleave="onLeave"
-            @click="onSelect(p)"
+            @mouseenter="!isLakeFeature(p.f) && onEnter(p, $event)"
+            @mousemove="!isLakeFeature(p.f) && onMove($event)"
+            @mouseleave="!isLakeFeature(p.f) && onLeave()"
+            @click="!isLakeFeature(p.f) && onSelect(p)"
           />
         </g>
       </g>
@@ -471,7 +496,7 @@ function keyForRaw(raw){ const k0=norm(raw); const k=nameAlias[k0]||k0; return f
       </div>
 
       <!-- Suche -->
-      <div class="hud-search">
+      <div class="hud-search" ref="searchWrapEl">
         <input
           ref="searchInputEl"
           type="text"
@@ -517,13 +542,14 @@ function keyForRaw(raw){ const k0=norm(raw); const k=nameAlias[k0]||k0; return f
 
 .gm-wrap.is-expanded{
   position: fixed; left: 50%; top: 50vh; transform: translate(-50%, -50%);
-  width: min(98vw, 1200px); height: min(90vh, 500px);
+  width: min(98vw, 1200px); height: min(90vh, 720px);
   z-index: 1000; background: #fff; border-radius:5px; box-shadow: 0 8px 32px rgba(0,0,0,0.18);
 }
 
 /* Hover/Select */
 path.is-hovered{ stroke:#fff; stroke-width:1.2; filter:drop-shadow(0 0 2px rgba(0,0,0,.4)); }
 path.is-selected{ stroke:#000; stroke-width:1.6; filter:drop-shadow(0 0 3px rgba(0,0,0,.55)); }
+path.is-lake { pointer-events: none; }
 
 /* HUD */
 .hud{ position:absolute; inset:0; pointer-events:none; }
@@ -547,25 +573,30 @@ path.is-selected{ stroke:#000; stroke-width:1.6; filter:drop-shadow(0 0 3px rgba
 }
 .gm-wrap.is-expanded .hud-search{ width:min(calc(300px * var(--uiScale)), 44vw); }
 .search-input{
-  width:100%; padding:calc(6px * var(--uiScale)) calc(14px * var(--uiScale));
-  border-radius:calc(3px * var(--uiScale)); border:1px solid rgba(0,0,0,.2);
-  outline:none; font-size:calc(15px * var(--uiScale));
-  background:rgba(231, 231, 231, 0.35); backdrop-filter:blur(4px);
+  width:100%; 
+  padding:calc(6px * var(--uiScale)) calc(14px * var(--uiScale));
+  border-radius:calc(3px * var(--uiScale)); 
+  border:1px solid rgba(0,0,0,.2);
+  outline:none; 
+  font-size:calc(18px * var(--uiScale));
+  background:rgba(92, 92, 92, 0.08); 
+  backdrop-filter:blur(4px);
 }
 .gm-wrap.is-expanded .search-input{
-  font-size: clamp(12px, calc(16px * var(--uiScale)), 18px);
+  font-size: clamp(18px, calc(20px * var(--uiScale)), 22px);
   padding: calc(8px * var(--uiScale)) calc(14px * var(--uiScale));
 }
 .search-suggest{
   position:absolute; left:0; right:0; margin:0; padding:8px 0; list-style:none;
-  background:rgba(249, 249, 249, 0.92); border:2px solid rgba(0,0,0,.2); border-top:none;
+  background:rgba(92, 92, 92, 0.03); backdrop-filter:blur(2px);
+  border:2px solid rgba(0,0,0,.2); border-top:none;
   border-radius:0 0 calc(3px * var(--uiScale)) calc(3px * var(--uiScale));
   box-shadow:0 4px 16px rgba(0,0,0,.12); max-height:260px; overflow:auto;
   font-size:calc(15px * var(--uiScale));
 }
 .gm-wrap.is-expanded .search-suggest{ font-size:calc(16px * var(--uiScale)); }
 .search-suggest li{ padding:8px 14px; cursor:pointer; }
-.search-suggest li.active, .search-suggest li:hover{ background:#f1f2f3; }
+.search-suggest li.active, .search-suggest li:hover{ background:#ffffff; }
 
 /* Zoom */
 .hud-zoom{
@@ -575,32 +606,37 @@ path.is-selected{ stroke:#000; stroke-width:1.6; filter:drop-shadow(0 0 3px rgba
 .gm-wrap.is-expanded .hud-zoom{ gap:calc(16px * var(--zoomScale, var(--uiScale))); }
 .zoom-btn{
   display:inline-flex; align-items:center; justify-content:center;
-  width:calc(20px * var(--zoomScale, var(--uiScale)));
-  height:calc(20px * var(--zoomScale, var(--uiScale)));
-  aspect-ratio:1/1; padding:0; border:1px solid rgba(0,0,0,.2);
-  background:rgba(231, 231, 231, 0.35); font-size:calc(12px * var(--zoomScale, var(--uiScale)));
+  width:calc(28px * var(--zoomScale, var(--uiScale)));
+  height:calc(28px * var(--zoomScale, var(--uiScale)));
+  aspect-ratio:1/1;
+  padding: 0;
+  border:0.5px solid rgba(0,0,0,.35);
+  background:rgba(92, 92, 92, 0.08); 
+  font-size:calc(23px * var(--zoomScale, var(--uiScale)));
   line-height:1; font-weight:600; cursor:pointer;
+  border-radius:3px;
 }
 .zoom-btn:hover{ background:#fff; }
 .gm-wrap.is-expanded .zoom-btn{
-  width:calc(26px * var(--zoomScale, var(--uiScale)));
-  height:calc(26px * var(--zoomScale, var(--uiScale)));
-  font-size:calc(20px * var(--zoomScale, var(--uiScale)));
+  width:calc(30px * var(--zoomScale, var(--uiScale)));
+  height:calc(30px * var(--zoomScale, var(--uiScale)));
+  font-size:calc(30px * var(--zoomScale, var(--uiScale)));
 }
 
 /* Fit/Close */
-.hud-fit{ position:absolute; left:var(--legendOffset, 18px); bottom:var(--legendOffset, 18px); pointer-events:auto; }
-.hud-fit .zoom-btn{ width: calc(24px * var(--fitBtnScale)); height: calc(24px * var(--fitBtnScale)); font-size: calc(18px * var(--fitBtnScale)); }
-.gm-wrap.is-expanded .hud-fit .zoom-btn{ width: calc(26px * var(--fitBtnScale)); height: calc(26px * var(--fitBtnScale)); font-size: calc(20px * var(--fitBtnScale)); }
+.hud-fit{ position:absolute; 
+  left:var(--legendOffset, 18px); bottom:var(--legendOffset, 18px); pointer-events:auto; }
+.hud-fit .zoom-btn{ width: calc(28px * var(--fitBtnScale)); height: calc(28px * var(--fitBtnScale)); font-size: calc(23px * var(--fitBtnScale)); }
+.gm-wrap.is-expanded .hud-fit .zoom-btn{ width: calc(28px * var(--fitBtnScale)); height: calc(28px * var(--fitBtnScale)); font-size: calc(23px * var(--fitBtnScale)); }
 
 .hud-close{ position:absolute; left:var(--legendOffset, 18px); bottom:var(--legendOffset, 18px); pointer-events:auto; }
-.hud-close .zoom-btn{ width: calc(24px * var(--closeBtnScale)); height: calc(24px * var(--closeBtnScale)); font-size: calc(14px * var(--closeBtnScale)); }
-.gm-wrap.is-expanded .hud-close .zoom-btn{ width: calc(26px * var(--closeBtnScale)); height: calc(26px * var(--closeBtnScale)); font-size: calc(20px * var(--closeBtnScale)); }
+.hud-close .zoom-btn{ width: calc(28px * var(--closeBtnScale)); height: calc(28px * var(--closeBtnScale)); font-size: calc(23px * var(--closeBtnScale)); }
+.gm-wrap.is-expanded .hud-close .zoom-btn{ width: calc(30px * var(--closeBtnScale)); height: calc(30px * var(--closeBtnScale)); font-size: calc(30px * var(--closeBtnScale)); }
 
 /* Info-Box */
 .gm-infobox{
   position:absolute; transform:translate(-50%,-100%);
-  background:rgba(2, 25, 72, 0.8); color:#fff; padding:10px 14px;
+  background:rgba(92, 92, 92, 0.8); color:#fff; padding:10px 14px;
   border-radius:10px; max-width:280px; box-shadow: 0 6px 18px rgba(0,0,0,.25);
 }
 .info-name{ font-weight:700; margin-bottom:4px; }
