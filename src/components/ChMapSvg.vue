@@ -69,27 +69,41 @@ function legendValue(p){ const t=p/100; return domainMax.value*(1-t) + domainMin
 
 /* ===== Laden & Fitting ===== */
 onMounted(async () => {
-  const geo = await d3.json(`${props.dataDir}/schweiz_gemeinden.geojson`)
-  const featsAll = (geo?.features ?? [])
+  const geo = await d3.json(`${props.dataDir}/gemeinden.geojson`)
+
+  // Convert 3D coordinates to 2D for D3 compatibility
+  const strip3D = (coords) => {
+    if (Array.isArray(coords[0])) {
+      return coords.map(strip3D)
+    } else {
+      return [coords[0], coords[1]] // Keep only lon, lat
+    }
+  }
+
+  const featsAll = (geo?.features ?? []).map(f => ({
+    ...f,
+    geometry: {
+      ...f.geometry,
+      // coordinates: strip3D(f.geometry.coordinates)
+       coordinates: f.geometry.coordinates
+    }
+  }))
+
   const feats = featsAll.filter(f => {
-    const al = f?.properties?.admin_level ?? f?.properties?.admin_leve
     const gt = f?.geometry?.type
-    return String(al) === '8' && (gt === 'Polygon' || gt === 'MultiPolygon')
+    return gt === 'Polygon' || gt === 'MultiPolygon'
   })
 
   const fc = { type: 'FeatureCollection', features: feats }
-  const b  = d3.geoBounds(fc)
-  const looksLikeLonLat = !(
-    b[0][0] <= -179.999 && b[0][1] <= -89.999 &&
-    b[1][0] >=  179.999 && b[1][1] >=  89.999
-  )
-  projection = looksLikeLonLat ? d3.geoMercator() : d3.geoIdentity().reflectY(true)
+  const bounds = d3.geoBounds(fc)
+
+  projection = d3.geoMercator()
   projection.fitExtent([contentMin, contentMax], fc)
   geoPath.projection(projection)
 
   paths.value = feats.map(f => {
     const d = geoPath(f)
-    const key = f?.properties?.id ?? f?.properties?.gml_id ?? f?.properties?.name
+    const key = f?.properties?.id ?? f?.properties?.gml_id ?? f?.properties?.NAME ?? f?.properties?.name
     return d ? { d, f, key } : null
   }).filter(Boolean)
 
@@ -124,7 +138,7 @@ onMounted(async () => {
 function fillFor(f) {
   if (!colorScale.value) return '#c8c8c8'
   const m = byYearByName.value.get(+props.year); if (!m) return '#c8c8c8'
-  let k = norm(f?.properties?.name); if (nameAlias[k]) k = nameAlias[k]
+  let k = norm(f?.properties?.NAME || f?.properties?.name); if (nameAlias[k]) k = nameAlias[k]
   const val = m.get(k)
   return val != null ? colorScale.value(val) : '#c8c8c8'
 }
