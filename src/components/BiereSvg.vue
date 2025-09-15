@@ -53,16 +53,22 @@ const ready = computed(() => data.value.length > 1)
 const norm = (s) => (s || '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
 
 onMounted(async () => {
-  const csv = await d3.csv(`${props.dataDir}/lau_lvl_data_temperatures_ch.csv`, d3.autoType)
+  // Robuster Parser: 0 bleibt 0; nur leere/ungültige Werte → null
+  const csv = await d3.csv(`${props.dataDir}/lau_lvl_data_temperatures_ch.csv`, d => {
+    if (d.CNTR_CODE !== 'CH') return null
+    const v = d.avg_year === "" || d.avg_year == null ? null : +d.avg_year
+    return { CNTR_CODE: d.CNTR_CODE, LAU_LABEL: d.LAU_LABEL, year: +d.year, avg_year: Number.isFinite(v) ? v : null }
+  })
   rows.value = csv
+
   data.value = csv
     .filter(d =>
-      d.CNTR_CODE === 'CH' &&
       norm(d.LAU_LABEL) === 'biere' &&
-      +d.year >= 1971 &&
+      d.year >= 1971 &&
+      d.year <= 2018 &&
       d.avg_year != null
     )
-    .map(d => ({ year: +d.year, avg: +d.avg_year }))
+    .map(d => ({ year: d.year, avg: d.avg_year }))
     .sort((a, b) => d3.ascending(a.year, b.year))
 })
 
@@ -124,25 +130,31 @@ function cardinalSplinePath(points, tension = 0.15) {
   return path.join(' ')
 }
 
-/* ===== Datenbasirte Farbskala ===== */
- const globalExtent = computed(() => {
-   if (!rows.value?.length) return [0, 1]
-   const vals = rows.value
-     .filter(d =>
-       d.CNTR_CODE === 'CH' &&
-       d.avg_year != null &&
-       +d.year >= 1971 && +d.year <= 2018
-    )
-     .map(d => +d.avg_year)
-   const ext = d3.extent(vals)
-   return (ext[0] == null) ? [0,1] : ext
- })
+/* ===== Gemeinsame Domain für die Farbe ===== */
+const globalExtent = computed(() => {
+  if (!rows.value?.length) return [0, 1]
+  const vals = rows.value
+    .filter(d => d.avg_year != null && d.year >= 1971 && d.year <= 2018)
+    .map(d => d.avg_year)
+  const ext = d3.extent(vals)
+  return (ext[0] == null) ? [0, 1] : ext
+})
 
- const colorScaleVal = computed(() =>
-   d3.scaleSequential()
-     .domain(globalExtent.value) // <— gemeinsame Domain!
-    .interpolator(d3.interpolateTurbo)
- )
+/* ===== Eigene Fabrpalette ===== */
+const PALETTE = [
+  "#0e2741", "#153d6a", "#1f5a92", "#2f79af", "#5497c0",
+  "#80b4cf", "#b3cfdd", "#c9dbe6", "#dfe6ef", "#e8d6bf",
+  "#efb884", "#e47f57", "#de6d4d", "#d35245", "#c83f3e",
+  "#a71f3a", "#6f0b25"
+]
+const interpolateBase = d3.interpolateLch || d3.interpolateLab
+const interpolateCustom = d3.piecewise(interpolateBase, PALETTE)
+
+const colorScaleVal = computed(() =>
+  d3.scaleSequential(interpolateCustom)
+    .domain(globalExtent.value)
+    .clamp(true)
+)
 
 /* ===== Segmente (für Gradients) ===== */
 const segGradUID = `seg-${Math.random().toString(36).slice(2)}`
@@ -151,6 +163,7 @@ const segments = computed(() => {
   for (let i = 0; i < data.value.length - 1; i++) {
     const a = data.value[i]
     const b = data.value[i + 1]
+    if (!Number.isFinite(a.avg) || !Number.isFinite(b.avg)) continue
     out.push({
       i, a, b,
       x1: xScale(a.year), y1: yScale(a.avg),
@@ -183,7 +196,6 @@ const curPt = computed(() => (cur.value ? [xScale(cur.value.year), yScale(cur.va
 const curColor = computed(() => cur.value ? colorScaleVal.value(cur.value.avg) : '#888')
 
 /* ===== Helper ===== */
-/** Ausgabe OHNE führendes Plus, aber mit Minus falls < 0, inkl. °C  */
 function formatTemp(v, digits = 1) {
   if (v == null || Number.isNaN(v)) return ''
   const num = Math.abs(v).toFixed(digits)
@@ -249,7 +261,7 @@ function formatTemp(v, digits = 1) {
           </text>
         </g>
 
-        <!-- Optionale, helle Unterlage für perfekte Übergänge -->
+        <!-- Optionale, helle Unterlage (dezent) -->
         <path
           :d="smoothPath"
           stroke="#000"
@@ -284,19 +296,19 @@ function formatTemp(v, digits = 1) {
     </svg>
 
     <!-- "Anschrift" der Grafik -->
-      <div
-        class="linien-title"
-        :style="{ left: leftPx + 'px', top: (topPx + hudOffsetPx + 40*scale) + 'px'}"
-      >
-        Bière · 1971–2018
-      </div>
-      <div
-        class="linien-subtitle"
-        :style="{ left: leftPx + 'px', top: (topPx + hudOffsetPx + 70*scale) + 'px'}"
-      >
-        Ø Jahrestemperatur
-      </div>
+    <div
+      class="linien-title"
+      :style="{ left: leftPx + 'px', top: (topPx + hudOffsetPx + 40*scale) + 'px'}"
+    >
+      Bière · 1971–2018
     </div>
+    <div
+      class="linien-subtitle"
+      :style="{ left: leftPx + 'px', top: (topPx + hudOffsetPx + 70*scale) + 'px'}"
+    >
+      Ø Jahrestemperatur
+    </div>
+  </div>
 </template>
 
 <style scoped>
@@ -310,14 +322,14 @@ function formatTemp(v, digits = 1) {
   color: #222;
   font-family: "Source Serif 4", ui-serif, Georgia, "Times New Roman", Times, serif;
 }
-.linien-subtitle { 
+.linien-subtitle {
   position: absolute;
   font-size: 9px;
-  font-weight: 600; 
-  color: #444; 
+  font-weight: 600;
+  color: #444;
   font-family: "Source Serif 4", ui-serif, Georgia, "Times New Roman", Times, serif;
   margin-top: 5px;
 }
 
-text { font-family: "Source Serif 4", ui-serif, Georgia, "Times New Roman", Times, serif;}
+text { font-family: "Source Serif 4", ui-serif, Georgia, "Times New Roman", Times, serif; }
 </style>
