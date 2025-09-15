@@ -30,6 +30,50 @@ const domainMax    = ref(1)
 const norm = s => (s || '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
 const nameAlias = {}
 
+/* ===== Eigene (diskrete) Farbpalette =====
+   Blau → hell um 0 → Rot; 10 Stufen (kannst du beliebig anpassen)
+*/
+const PALETTE = [
+  "#0e2741", // sehr kalt
+  "#1f5a92",
+  "#5497c0",
+  "#b3cfdd",
+  "#f6f6f6", // Nähe 0
+  "#f4d2a0",
+  "#e99a66",
+  "#de6d4d",
+  "#c83f3e",
+  "#6f0b25"  // sehr warm
+]
+
+/* Baut eine Schwellen-Skala mit „schönen“ Grenzen:
+   - Wir erzeugen ~N Ticks inkl. Min/Max und nehmen die inneren als Thresholds.
+   - Die Range-Länge muss thresholds.length + 1 entsprechen.
+*/
+function buildThresholdScale(min, max, palette = PALETTE){
+  // Falls Daten degeneriert sind (min==max), gib einfach die mittlere Palette zurück.
+  if (!Number.isFinite(min) || !Number.isFinite(max) || min === max){
+    const mid = palette[Math.floor(palette.length/2)] ?? "#ccc"
+    return d3.scaleThreshold().domain([min]).range([mid, mid])
+  }
+
+  const n = palette.length
+  // ungefähr n „schöne“ Marken inkl. Endpunkte
+  const ticks = d3.ticks(min, max, n)
+  // innere Marken als Schwellen verwenden (ohne min & max)
+  const thresholds = ticks.slice(1, -1)
+
+  // falls d3.ticks zu wenige/zu viele geliefert hat, justieren:
+  // Sorge dafür, dass range = thresholds.length + 1
+  let range = palette
+  if (thresholds.length + 1 !== palette.length){
+    // Re-sample Palette auf passende Länge
+    range = d3.quantize(t => d3.interpolateRgbBasis(palette)(t), thresholds.length + 1)
+  }
+
+  return d3.scaleThreshold().domain(thresholds).range(range)
+}
+
 /* ===== HUD – responsive Größen (an viewBox gekoppelt) ===== */
 const wrapEl = ref(null)
 const frameW = ref(vbW)
@@ -63,7 +107,7 @@ const legendBarW   = computed(() => Math.round(clamp(design.legendW  * hudScale.
 const legendBarH   = computed(() => Math.round(clamp(design.legendH  * hudScale.value, 80, 300)))
 const legendFontPx = computed(() => Math.round(clamp(design.legendFont* hudScale.value, 9, 18)) + 'px')
 
-// Legenden-Gradient
+// Legenden-Gradient (funktioniert auch mit diskreter Skala → Streifen)
 const legendId = `legend-${Math.random().toString(36).slice(2)}`
 function legendValue(p){ const t=p/100; return domainMax.value*(1-t) + domainMin.value*t }
 
@@ -97,7 +141,7 @@ onMounted(async () => {
   })
 
   byYearByName.value = d3.rollup(
-    rows.filter(d => d.year >= 1971 && d.year <= 2018), // <— Jahrfenster angleichen
+    rows.filter(d => d.year >= 1971 && d.year <= 2018),
     v => v.length === 1 ? v[0].avg_year : d3.mean(v, d => d.avg_year),
     d => d.year,
     d => {
@@ -115,7 +159,9 @@ onMounted(async () => {
 
   const ext = d3.extent(allVals)
   domainMin.value = ext[0]; domainMax.value = ext[1]
-  colorScale.value = d3.scaleSequential().domain(ext).interpolator(d3.interpolateTurbo)
+
+  // NEU: diskrete Skala mit schönen Schwellen
+  colorScale.value = buildThresholdScale(domainMin.value, domainMax.value, PALETTE)
 })
 
 /* ===== Farbe je Feature & Jahr ===== */
@@ -145,7 +191,7 @@ function fillFor(f) {
           :d="p.d"
           :fill="fillFor(p.f)"
           stroke="#fff"
-          stroke-width="0.003"
+          stroke-width="0.05"
           vector-effect="non-scaling-stroke"
         />
       </g>
@@ -165,6 +211,7 @@ function fillFor(f) {
         <svg class="legend-bar" :width="legendBarW" :height="legendBarH" viewBox="0 0 16 180" preserveAspectRatio="none">
           <defs>
             <linearGradient :id="legendId" x1="0" y1="0" x2="0" y2="1">
+              <!-- Diskrete Skala → Streifen; Sample bei 0..100% passt weiterhin -->
               <stop v-for="i in 101" :key="i" :offset="(i-1)/100" :stop-color="colorScale(legendValue(i-1))" />
             </linearGradient>
           </defs>

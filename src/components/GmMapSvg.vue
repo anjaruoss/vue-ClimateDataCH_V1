@@ -526,9 +526,9 @@ path.is-selected{ stroke:#000; stroke-width:1.6; filter:drop-shadow(0 0 3px rgba
 .gm-wrap.is-expanded .hud-search{ width:min(calc(300px * var(--uiScale)), 44vw); }
 .search-input{
   width:100%; padding:calc(6px * var(--uiScale)) calc(14px * var(--uiScale));
-  border-radius:calc(6px * var(--uiScale)); border:1px solid rgba(0,0,0,.2);
+  border-radius:calc(3px * var(--uiScale)); border:1px solid rgba(0,0,0,.2);
   outline:none; font-size:calc(15px * var(--uiScale));
-  background:rgba(237, 236, 236, 0.92); backdrop-filter:blur(4px);
+  background:rgba(231, 231, 231, 0.35); backdrop-filter:blur(4px);
 }
 .gm-wrap.is-expanded .search-input{
   font-size: clamp(12px, calc(16px * var(--uiScale)), 18px);
@@ -536,8 +536,8 @@ path.is-selected{ stroke:#000; stroke-width:1.6; filter:drop-shadow(0 0 3px rgba
 }
 .search-suggest{
   position:absolute; left:0; right:0; margin:0; padding:8px 0; list-style:none;
-  background:rgba(237, 236, 236, 0.92); border:2px solid rgba(0,0,0,.2); border-top:none;
-  border-radius:0 0 calc(10px * var(--uiScale)) calc(10px * var(--uiScale));
+  background:rgba(249, 249, 249, 0.92); border:2px solid rgba(0,0,0,.2); border-top:none;
+  border-radius:0 0 calc(3px * var(--uiScale)) calc(3px * var(--uiScale));
   box-shadow:0 4px 16px rgba(0,0,0,.12); max-height:260px; overflow:auto;
   font-size:calc(15px * var(--uiScale));
 }
@@ -548,7 +548,7 @@ path.is-selected{ stroke:#000; stroke-width:1.6; filter:drop-shadow(0 0 3px rgba
 /* Zoom */
 .hud-zoom{
   position:absolute; right:var(--legendOffset, 18px); bottom:var(--legendOffset, 18px);
-  display:grid; gap:calc(10px * var(--zoomScale, var(--uiScale))); pointer-events:auto;
+  display:grid; gap:calc(15px * var(--zoomScale, var(--uiScale))); pointer-events:auto;
 }
 .gm-wrap.is-expanded .hud-zoom{ gap:calc(16px * var(--zoomScale, var(--uiScale))); }
 .zoom-btn{
@@ -556,7 +556,7 @@ path.is-selected{ stroke:#000; stroke-width:1.6; filter:drop-shadow(0 0 3px rgba
   width:calc(20px * var(--zoomScale, var(--uiScale)));
   height:calc(20px * var(--zoomScale, var(--uiScale)));
   aspect-ratio:1/1; padding:0; border:1px solid rgba(0,0,0,.2);
-  background:rgba(237,236,236,.92); font-size:calc(12px * var(--zoomScale, var(--uiScale)));
+  background:rgba(231, 231, 231, 0.35); font-size:calc(12px * var(--zoomScale, var(--uiScale)));
   line-height:1; font-weight:600; cursor:pointer;
 }
 .zoom-btn:hover{ background:#fff; }

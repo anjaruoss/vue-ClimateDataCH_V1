@@ -216,6 +216,10 @@ const contentTitleDy = computed(() => 0)
   --headline-font: "Merriweather", "Source Serif 4", ui-serif, Georgia, "Times New Roman", Times, serif;
   --text-font: "Source Serif 4", ui-serif, Georgia, "Times New Roman", Times, serif;
   --text-color: #111;
+  --measure: 62ch;
+  --measure-sub: 68ch;
+  --measure-h1: 28ch;  /* Haupttitel */
+  --measure-h3: 30ch;  /* Zwischentitel */
   --s-1: 16px;
   --s-2: 24px;
   --s-3: 32px;
@@ -253,9 +257,9 @@ h1, h2, h3{
   margin-bottom: var(--s-2);
   margin-top: var(--s-2);
 }
+h3{ margin-top: 50px;}
 
 /* feinere Skala, an NZZ angelehnt */
-h1, .title{ font-size: clamp(28px, 4.2vw, 46px); }
 h2{ font-size: clamp(18px, 2.6vw, 26px); font-weight: 700; }
 h3{ font-size: clamp(16px, 2.1vw, 22px); font-weight: 700; }
 
@@ -269,18 +273,57 @@ h3{ font-size: clamp(16px, 2.1vw, 22px); font-weight: 700; }
   margin-bottom: var(--s-2);
 }
 
-.text-block p{
-  margin: 0 0 1.05em 0;
-  hyphens: auto; /* nicht kürzen! */
-}
-
 /* Autor */
-.author {
+.author{
+  max-width: var(--measure-sub);
+  margin: 6px auto 18px;   /* statt 6px 0 18px 0 */
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-  margin: 6px 0 18px 0;
   font-size: 12px;
   letter-spacing: .2px;
   color: #555;
+}
+
+
+/* Breite Untertitel */
+.text-block .subtitle{
+  max-width: var(--measure-sub);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/*Breite Text-Elemente im Artikel */
+.text-block h2,
+.text-block p {
+  max-width: var(--measure);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Haupttitel enger und zentriert */
+.text-block h1,
+.text-block .title{
+  max-width: var(--measure-h1);
+  margin-left: auto;
+  margin-right: auto;
+  text-wrap: balance;   /* hübschere Zeilenumbrüche */
+  hyphens: none;
+}
+/* Zwischentitel enger und zentriert */
+.text-block h3{
+  max-width: var(--measure-h3);
+  margin-left: auto;
+  margin-right: auto;
+  text-wrap: balance;
+  hyphens: none;
+}
+
+/* ausdrücklich NICHT einschränken: Grafik-/Karten-Frames & Bildlegenden */
+.text-block .svg-frame,
+.text-block .linien-frame,
+.text-block .map-frame,
+.text-block .bildlegende {
+  max-width: none;   /* überschreibt die measure, falls geerbt */
+  width: 100%;
 }
 
 /* Diagramm-Frames (responsive, Chrome-friendly) */
@@ -297,8 +340,8 @@ h3{ font-size: clamp(16px, 2.1vw, 22px); font-weight: 700; }
 
 /* Rahmen rund um weisse Content-Karte */
 .frame-bg{
-  --frame-intensity: 40%;
-  background-color: rgba(2, 25, 72, 0.88);
+  --frame-intensity: 30%;
+  background-color: rgba(231, 231, 231, 0.88);
   --frame-side: clamp(16px, 3vw, 40px);
   --frame-bottom: clamp(16px, 3vw, 40px);
   padding: 0 var(--frame-side) var(--frame-bottom);
@@ -315,17 +358,11 @@ h3{ font-size: clamp(16px, 2.1vw, 22px); font-weight: 700; }
 .content-card{
   background: #fff;
   padding: clamp(18px, 3vw, 36px);
-  border-radius:5px;
+  border-radius:3px;
   margin-top: clamp(16px, 3vw, 40px);
 }
 
 .content-intro{ margin: 0 0 16px 0; transition: opacity .18s linear, transform .18s ease-out; }
-
-.text-block{
-  width: 100%;
-  margin: 16px auto 0;
-  color: #213547;
-}
 
 /* Bildlegende */
 .bildlegende{
