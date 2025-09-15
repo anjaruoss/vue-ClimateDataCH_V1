@@ -172,22 +172,7 @@ onMounted(async () => {
   ])
   const rows = raw.filter(Boolean)
 
-  // Convert 3D coordinates to 2D for D3 compatibility
-  const strip3D = (coords) => {
-    if (Array.isArray(coords[0])) {
-      return coords.map(strip3D)
-    } else {
-      return [coords[0], coords[1]] // Keep only lon, lat
-    }
-  }
-
-  const featsAll = (geo?.features ?? []).map(f => ({
-    ...f,
-    geometry: {
-      ...f.geometry,
-      coordinates: strip3D(f.geometry.coordinates)
-    }
-  }))
+  const featsAll = (geo?.features ?? [])
 
   const feats = featsAll.filter(f =>
     f?.geometry?.type === 'Polygon' || f?.geometry?.type === 'MultiPolygon'

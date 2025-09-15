@@ -71,23 +71,7 @@ function legendValue(p){ const t=p/100; return domainMax.value*(1-t) + domainMin
 onMounted(async () => {
   const geo = await d3.json(`${props.dataDir}/gemeinden.geojson`)
 
-  // Convert 3D coordinates to 2D for D3 compatibility
-  const strip3D = (coords) => {
-    if (Array.isArray(coords[0])) {
-      return coords.map(strip3D)
-    } else {
-      return [coords[0], coords[1]] // Keep only lon, lat
-    }
-  }
-
-  const featsAll = (geo?.features ?? []).map(f => ({
-    ...f,
-    geometry: {
-      ...f.geometry,
-      // coordinates: strip3D(f.geometry.coordinates)
-       coordinates: f.geometry.coordinates
-    }
-  }))
+  const featsAll = (geo?.features ?? [])
 
   const feats = featsAll.filter(f => {
     const gt = f?.geometry?.type
