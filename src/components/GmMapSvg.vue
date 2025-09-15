@@ -542,7 +542,7 @@ function closeSearch(){
 
 .gm-wrap.is-expanded{
   position: fixed; left: 50%; top: 50vh; transform: translate(-50%, -50%);
-  width: min(98vw, 1200px); height: min(90vh, 720px);
+  width: min(98vw, 1200px); height: min(90vh, 800px);
   z-index: 1000; background: #fff; border-radius:5px; box-shadow: 0 8px 32px rgba(0,0,0,0.18);
 }
 

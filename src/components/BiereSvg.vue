@@ -37,6 +37,7 @@ onBeforeUnmount(() => ro?.disconnect())
 const scale = computed(() => Math.min(frameW.value / vbW, frameH.value / vbH))
 const leftPx = computed(() => Math.round(20 * scale.value))
 const topPx  = computed(() => Math.round(14 * scale.value))
+const labelColumnX = computed(() => Math.round(0 / (scale.value || 1)))
 
 /* Anschrift 20px tiefer */
 const hudOffsetPx = computed(() => Math.round(20 * scale.value))
@@ -247,8 +248,8 @@ function formatTemp(v, digits = 1) {
       <!-- Grid + Achsen -->
       <g v-if="ready">
         <g v-for="(t, i) in yTicks" :key="'y-'+i">
-          <line :x1="plotL" :x2="plotR" :y1="yScale(t)" :y2="yScale(t)" />
-          <text :x="plotL - 10" :y="yScale(t)" text-anchor="end" dominant-baseline="middle" :font-size="tickFontPx * 1.3" fill="#4b4b4b">
+          <line :x1="labelColumnX" :x2="labelColumnX" :y1="plotT - 40" :y2="plotB" />
+          <text :x="labelColumnX + 2" :y="yScale(t)" text-anchor="start" dominant-baseline="middle" :font-size="tickFontPx * 1.3" fill="#4b4b4b">
             {{ t.toFixed(0) }}°C
           </text>
         </g>
@@ -260,17 +261,6 @@ function formatTemp(v, digits = 1) {
             {{ yr }}
           </text>
         </g>
-
-        <!-- Optionale, helle Unterlage (dezent) -->
-        <path
-          :d="smoothPath"
-          stroke="#000"
-          opacity="0.06"
-          stroke-width="7"
-          fill="none"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        />
 
         <!-- Datengesteuerte, segmentierte Linie mit Verlaufs-Stroke -->
         <g>

@@ -24,10 +24,10 @@ export type ScrubberOpts = {
 
 export function useScrubber(visualizations: VizItem[], opts: ScrubberOpts){
   // ===== Optionen (mit Defaults) =====
-  const WHEEL_PX_PER_YEAR = 50
-  const TOUCH_PX_PER_YEAR = 50
+  const WHEEL_PX_PER_YEAR = 75
+  const TOUCH_PX_PER_YEAR = 75
   const TOL_MIN_PX        = 32
-  const TOL_RATIO         = 0.25
+  const TOL_RATIO         = 0.1
   const WHEEL_IDLE_MS     = 120
 
   // ===== Zustände für Eingaben =====
