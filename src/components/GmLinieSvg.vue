@@ -6,7 +6,7 @@ import * as d3 from 'd3'
 const props = defineProps({
   dataDir: { type: String, default: '/data' },
   year:    { type: Number, default: null },
-  name:    { type: String, required: true }    // <— optional falls du dynamische Namen übergeben willst
+  name:    { type: String, required: true }
 })
 
 /* ===== ViewBox/Layout ===== */
@@ -49,16 +49,22 @@ const data = ref([]) // [{year, avg}]
 const ready = computed(() => data.value.length > 1)
 
 async function loadData() {
-  const csv = await d3.csv(`${props.dataDir}/lau_lvl_data_temperatures_ch.csv`, d3.autoType)
+  // Robuster Parser: 0 bleibt 0; nur leere/ungültige Werte → null
+  const csv = await d3.csv(`${props.dataDir}/lau_lvl_data_temperatures_ch.csv`, d => {
+    if (d.CNTR_CODE !== 'CH') return null
+    const v = d.avg_year === "" || d.avg_year == null ? null : +d.avg_year
+    return { CNTR_CODE: d.CNTR_CODE, LAU_LABEL: d.LAU_LABEL, year: +d.year, avg_year: Number.isFinite(v) ? v : null }
+  })
   rows.value = csv
+
   data.value = csv
     .filter(d =>
-      d.CNTR_CODE === 'CH' &&
       d.LAU_LABEL === props.name &&
-      +d.year >= 1971 &&
+      d.year >= 1971 &&
+      d.year <= 2018 &&
       d.avg_year != null
     )
-    .map(d => ({ year: +d.year, avg: +d.avg_year }))
+    .map(d => ({ year: d.year, avg: d.avg_year }))
     .sort((a, b) => d3.ascending(a.year, b.year))
 }
 
@@ -123,23 +129,29 @@ function cardinalSplinePath(points, tension = 0.15) {
   return path.join(' ')
 }
 
-/* ===== Farbskala ===== */
+/* ===== Eigene Farbpalette ===== */
 const globalExtent = computed(() => {
   if (!rows.value?.length) return [0, 1]
   const vals = rows.value
-    .filter(d =>
-      d.CNTR_CODE === 'CH' &&
-      d.avg_year != null &&
-      +d.year >= 1971 && +d.year <= 2018
-    )
-    .map(d => +d.avg_year)
+    .filter(d => d.avg_year != null && d.year >= 1971 && d.year <= 2018)
+    .map(d => d.avg_year)
   const ext = d3.extent(vals)
-  return (ext[0] == null) ? [0,1] : ext
+  return (ext[0] == null) ? [0, 1] : ext
 })
+
+const PALETTE = [
+  "#0e2741", "#153d6a", "#1f5a92", "#2f79af", "#5497c0",
+  "#80b4cf", "#b3cfdd", "#c9dbe6", "#dfe6ef", "#e8d6bf",
+  "#efb884", "#e47f57", "#de6d4d", "#d35245", "#c83f3e",
+  "#a71f3a", "#6f0b25"
+]
+const interpolateBase = d3.interpolateLch || d3.interpolateLab
+const interpolateCustom = d3.piecewise(interpolateBase, PALETTE)
+
 const colorScaleVal = computed(() =>
-  d3.scaleSequential()
+  d3.scaleSequential(interpolateCustom)
     .domain(globalExtent.value)
-    .interpolator(d3.interpolateTurbo)
+    .clamp(true)
 )
 
 /* ===== Segmente (Gradient-Strokes) ===== */
@@ -149,6 +161,7 @@ const segments = computed(() => {
   for (let i = 0; i < data.value.length - 1; i++) {
     const a = data.value[i]
     const b = data.value[i + 1]
+    if (!Number.isFinite(a.avg) || !Number.isFinite(b.avg)) continue
     out.push({
       i, a, b,
       x1: xScale(a.year), y1: yScale(a.avg),
@@ -242,7 +255,18 @@ function formatTemp(v, digits = 1) {
           </text>
         </g>
 
-        <!-- Segmentierte Linie -->
+        <!-- Optionale, sehr leichte Unterlage -->
+        <path
+          :d="smoothPath"
+          stroke="#000"
+          opacity="0.06"
+          stroke-width="7"
+          fill="none"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+
+        <!-- Segmentierte Linie mit Verlaufs-Stroke -->
         <g>
           <line
             v-for="s in segments"
@@ -295,5 +319,5 @@ function formatTemp(v, digits = 1) {
   margin-top: 5px;
 }
 
-text { font-family: "Source Serif 4", ui-serif, Georgia, "Times New Roman", Times, serif;}
+text { font-family: "Source Serif 4", ui-serif, Georgia, "Times New Roman", Times, serif; }
 </style>
