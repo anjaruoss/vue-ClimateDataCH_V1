@@ -163,7 +163,7 @@ function onWindowResize(){ updateUiScale(); updateInfoBoxPosition() }
 
 onMounted(async () => {
   const [geo, raw] = await Promise.all([
-    d3.json(`${props.dataDir}/schweiz_gemeinden.geojson`),
+    d3.json(`${props.dataDir}/gemeinden.geojson`),
     d3.csv(`${props.dataDir}/lau_lvl_data_temperatures_ch.csv`, d => {
       const yr=+d.year
       if (d.CNTR_CODE==='CH' && yr===+props.year) return { LAU_LABEL:d.LAU_LABEL, variation:d.variation_periods!==''?+d.variation_periods:null }
@@ -173,9 +173,9 @@ onMounted(async () => {
   const rows = raw.filter(Boolean)
 
   const featsAll = (geo?.features ?? [])
+
   const feats = featsAll.filter(f =>
-    (String(f?.properties?.admin_level) === '8') &&
-    (f?.geometry?.type === 'Polygon' || f?.geometry?.type === 'MultiPolygon')
+    f?.geometry?.type === 'Polygon' || f?.geometry?.type === 'MultiPolygon'
   )
 
   const fc = { type:'FeatureCollection', features:feats }
@@ -202,7 +202,7 @@ onMounted(async () => {
   const P=[], fByKey=new Map(), nByKey=new Map()
   for (const f of feats){
     const d = geoPath(f); if(!d) continue
-    const rawName = f?.properties?.name || ''
+    const rawName = f?.properties?.NAME || f?.properties?.name || ''
     let k = norm(rawName); if (nameAlias[k]) k = nameAlias[k]
     const c = geoPath.centroid(f)
     P.push({ d, key:k, f, centroid:c, rawName })
