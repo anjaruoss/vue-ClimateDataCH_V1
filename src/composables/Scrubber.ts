@@ -27,7 +27,7 @@ export function useScrubber(visualizations: VizItem[], opts: ScrubberOpts){
   const WHEEL_PX_PER_YEAR = 75
   const TOUCH_PX_PER_YEAR = 75
   const TOL_MIN_PX        = 32
-  const TOL_RATIO         = 0.1
+  const TOL_RATIO         = 0.15
   const WHEEL_IDLE_MS     = 120
 
   // ===== Zustände für Eingaben =====
