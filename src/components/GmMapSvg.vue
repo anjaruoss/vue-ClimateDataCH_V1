@@ -123,7 +123,7 @@ function hitSelectAt(clientX, clientY){
   const el = document.elementFromPoint(clientX, clientY)
   if (!el) { clearSelection(); return }
   const inThisSvg = !!svgEl.value && (el === svgEl.value || svgEl.value.contains(el))
-  if (!inThisSvg){ clearSelection(); return }
+  if (!inThisSvg){ clearSelection(); return }  
   const pathEl = el.closest('path')
   if (pathEl && svgEl.value.contains(pathEl)) {
     const key = pathEl.getAttribute('data-key')
@@ -278,6 +278,7 @@ function onDocumentClick(e){
   const inSvg    = !!svgEl.value && (svgEl.value === e.target || svgEl.value.contains(e.target))
   const inSearch = !!searchWrapEl.value && searchWrapEl.value.contains(e.target)
   if (!inSearch) closeSearch()
+  if (inHud) return
   if (hudEl.value && hudEl.value.contains(e.target) && inSearch) return
   if (!root.contains(e.target)) {
     if (isExpanded.value) closeExpanded(); else clearSelection()
