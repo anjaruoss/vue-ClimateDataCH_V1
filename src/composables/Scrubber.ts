@@ -1,7 +1,3 @@
-// Zentraler Scrubber für Scroll-/Touch-/Keyboard-Handling.
-// Bindet Events an Window *und direkt an die Frame-Elemente (wichtig für Chrome).
-// Identifiziert stets den zentriertesten Frame und routet die Eingabe dorthin.
-
 import { onMounted, onBeforeUnmount, Ref } from 'vue'
 
 export type VizItem = {
@@ -26,8 +22,8 @@ export function useScrubber(visualizations: VizItem[], opts: ScrubberOpts){
   // ===== Optionen (mit Defaults) =====
   const WHEEL_PX_PER_YEAR = 75
   const TOUCH_PX_PER_YEAR = 75
-  const TOL_MIN_PX        = 32
-  const TOL_RATIO         = 0.15
+  const TOL_MIN_PX        = 38
+  const TOL_RATIO         = 0.1
   const WHEEL_IDLE_MS     = 120
 
   // ===== Zustände für Eingaben =====
