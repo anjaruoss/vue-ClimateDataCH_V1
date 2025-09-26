@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue'
 import * as d3 from 'd3'
 
 const YEAR_MIN = 1971, YEAR_MAX = 2018
@@ -11,7 +11,7 @@ const props = defineProps({
   textColor: { type: String,  default: '#000' },
 })
 
-/* ===== Fixes viewBox-Koordinatensystem ===== */
+/* ===== viewBox & Contentbereich ===== */
 const vbW = 1200, vbH = 740
 const padL = 24, padT = 24, padB = 24, padR = 24
 const contentMin = [padL, padT]
@@ -23,44 +23,67 @@ const geoPath   = d3.geoPath().projection(projection)
 
 const paths        = ref([])
 const byYearByName = ref(new Map())
-const colorScale   = ref(null)
-const domainMin    = ref(0)
-const domainMax    = ref(1)
+const domainMin    = ref(-10)   // tatsächliches Minimum (°C) über alle Jahre
+const domainMax    = ref(+10)   // tatsächliches Maximum (°C) über alle Jahre
 
 const norm = s => (s || '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
 const nameAlias = {}
 
-const NO_DATA = '#b0b0b0'
+const NO_DATA = '#9e9e9e'
 
-/* ===== Eigene Farbpalette =====*/
+/* ===== Deine Farbpalette (kalt → neutral → warm) ===== */
 const PALETTE = [
   "#0e2741", "#153d6a", "#1f5a92", "#2f79af", "#5497c0",
-  "#80b4cf", "#b3cfdd", "#c9dbe6", "#dfe6ef", "#e8d6bf",
-  "#efb884", "#e47f57", "#de6d4d", "#d35245", "#c83f3e",
-  "#a71f3a", "#6f0b25"
+  "#80b4cf", "#b3cfdd", "#c9dbe6", "#d9e2ea", "#f0f1f2",
+  "#e3d6c8", "#e8d6bf", "#efb884", "#e47f57", "#de6d4d",
+  "#d35245", "#c83f3e", "#a71f3a", "#6f0b25"
 ]
+// Hinweis: #f0f1f2 ist exakt das Zentrum der Palette (Index 9 bei 0-basiert)
 
-// LCH wenn verfügbar, sonst Lab – als sanfter Interpolator
+/* ===== Perzeptionsfreundliche Interpolation (LCH, Fallback Lab) ===== */
 const interpolateBase = d3.interpolateLch || d3.interpolateLab
-const interpolateCustom = d3.piecewise(interpolateBase, PALETTE)
+const interpPalette   = d3.piecewise(interpolateBase, PALETTE)
 
-/* (noch vorhanden, aber ungenutzt – lassen wir für minimale Änderungen drin) */
-function buildThresholdScale(min, max, palette = PALETTE){
-  if (!Number.isFinite(min) || !Number.isFinite(max) || min === max){
-    const mid = palette[Math.floor(palette.length/2)] ?? "#ccc"
-    return d3.scaleThreshold().domain([min]).range([mid, mid])
+/* ===== Mapping-Parameter =====
+   linear: exakte, verteilungsunabhängige Abbildung (empfohlen)
+   gamma:  optionale Feintuning-Exponenten für kalt/warm (1 = linear)
+*/
+const USE_GAMMA  = true      // <- bei Bedarf auf true stellen
+const gammaNeg   = 1.00       // >1 dämpft Blau, <1 verstärkt
+const gammaPos   = 1.00       // >1 dämpft Rot,  <1 verstärkt
+
+// Wert v (°C) → Positionsparameter t in [0..1] (0 blaues Ende, 0.5 weiß, 1 rotes Ende)
+function tFromValueLinear(v, minV, maxV){
+  // Center = 0°C; Domain = [minV, 0, maxV]
+  if (!Number.isFinite(v)) return 0.5
+  if (v >= 0){
+    const x = Math.min(v / Math.max(1e-9, maxV), 1)
+    return 0.5 + 0.5 * x
+  } else {
+    const x = Math.min((-v) / Math.max(1e-9, -minV), 1)
+    return 0.5 - 0.5 * x
   }
-  const n = palette.length
-  const ticks = d3.ticks(min, max, n)
-  const thresholds = ticks.slice(1, -1)
-  let range = palette
-  if (thresholds.length + 1 !== palette.length){
-    range = d3.quantize(t => d3.interpolateRgbBasis(palette)(t), thresholds.length + 1)
+}
+function tFromValueGamma(v, minV, maxV){
+  if (!Number.isFinite(v)) return 0.5
+  if (v >= 0){
+    const x = Math.min(v / Math.max(1e-9, maxV), 1)
+    return 0.5 + 0.5 * Math.pow(x, gammaPos)
+  } else {
+    const x = Math.min((-v) / Math.max(1e-9, -minV), 1)
+    return 0.5 - 0.5 * Math.pow(x, gammaNeg)
   }
-  return d3.scaleThreshold().domain(thresholds).range(range)
+}
+const tFromValue = (v, minV, maxV) => USE_GAMMA ? tFromValueGamma(v, minV, maxV)
+                                               : tFromValueLinear(v, minV, maxV)
+
+// Endgültige Farb-Funktion (Karte & Legende benutzen dieselbe)
+function colorFromValue(v){
+  const t = tFromValue(v, domainMin.value, domainMax.value)
+  return interpPalette(t)
 }
 
-/* ===== HUD – responsive Größen (an viewBox gekoppelt) ===== */
+/* ===== HUD – responsive Größen ===== */
 const wrapEl = ref(null)
 const frameW = ref(vbW)
 const frameH = ref(vbH)
@@ -83,7 +106,6 @@ const hudScale = computed(() => {
 })
 const clamp = (x,a,b) => Math.min(b, Math.max(a, x))
 
-// Design-Werte (bei 1200×740) → skaliert
 const design = { gap:24, yearSize:36, legendW:8, legendH:140, legendFont:12 }
 
 const leftPx       = computed(() => Math.round(design.gap * hudScale.value))
@@ -93,7 +115,7 @@ const legendBarW   = computed(() => Math.round(clamp(design.legendW  * hudScale.
 const legendBarH   = computed(() => Math.round(clamp(design.legendH  * hudScale.value, 80, 300)))
 const legendFontPx = computed(() => Math.round(clamp(design.legendFont* hudScale.value, 9, 18)) + 'px')
 
-// Legenden-Gradient
+/* Legenden-Gradient */
 const legendId = `legend-${Math.random().toString(36).slice(2)}`
 function legendValue(p){ const t=p/100; return domainMax.value*(1-t) + domainMin.value*t }
 
@@ -117,7 +139,7 @@ onMounted(async () => {
     return d ? { d, f, key } : null
   }).filter(Boolean)
 
-  // *** Parser fix: 0 bleibt 0, nur leere/ungültige Werte → null
+  // CSV laden (0 bleibt 0)
   const rows = await d3.csv(`${props.dataDir}/lau_lvl_data_temperatures_ch.csv`, d => {
     if (d.CNTR_CODE !== 'CH') return null
     const v = d.avg_year === "" || d.avg_year == null ? null : +d.avg_year
@@ -125,7 +147,7 @@ onMounted(async () => {
   })
 
   byYearByName.value = d3.rollup(
-    rows.filter(d => d.year >= 1971 && d.year <= 2018),
+    rows.filter(d => d.year >= YEAR_MIN && d.year <= YEAR_MAX),
     v => v.length === 1 ? v[0].avg_year : d3.mean(v, d => d.avg_year),
     d => d.year,
     d => {
@@ -135,19 +157,16 @@ onMounted(async () => {
     }
   )
 
+  // ABSOLUTE Domain aus ALLEN Jahren (nicht symmetrisch erzwingen!)
   const allVals = []
   for (const [yr, m] of byYearByName.value.entries()) {
-    if (yr < 1971 || yr > 2018) continue
+    if (yr < YEAR_MIN || yr > YEAR_MAX) continue
     for (const v of m.values()) if (v != null) allVals.push(v)
   }
-
-  const ext = d3.extent(allVals)
-  domainMin.value = ext[0]; domainMax.value = ext[1]
-
-  // *** Kontinuierliche Skala mit sanfter LCH/Lab-Interpolation
-  colorScale.value = d3.scaleSequential(interpolateCustom)
-    .domain([domainMin.value, domainMax.value])
-    .clamp(true)
+  const ext = d3.extent(allVals) // [min, max]
+  // Sicherstellen, dass 0 im Bereich liegt, damit Weiß sichtbar bleibt
+  domainMin.value = Math.min(ext[0] ?? 0, 0)
+  domainMax.value = Math.max(ext[1] ?? 0, 0)
 })
 
 /* Seen erkennen */
@@ -162,11 +181,10 @@ function isLakeFeature(f){
 /* ===== Farbe je Feature & Jahr ===== */
 function fillFor(f) {
   if (isLakeFeature(f)) return '#ffffff'   // Seen: weiss
-  if (!colorScale.value) return NO_DATA
   const m = byYearByName.value.get(+props.year); if (!m) return NO_DATA
   let k = norm(f?.properties?.NAME || f?.properties?.name); if (nameAlias[k]) k = nameAlias[k]
-  const val = m.get(k)
-  return Number.isFinite(val) ? colorScale.value(val) : NO_DATA
+  const val = m.get(k) // absolute Jahresmittel-Temperatur in °C
+  return Number.isFinite(val) ? colorFromValue(val) : NO_DATA
 }
 </script>
 
@@ -201,12 +219,15 @@ function fillFor(f) {
       >{{ year }}</div>
 
       <!-- Legende -->
-      <div class="hud-legend" v-if="colorScale" :style="{ right:leftPx+'px', top:topPx+'px' }">
+      <div class="hud-legend" :style="{ right:leftPx+'px', top:topPx+'px' }">
         <div class="legend-label" :style="{ fontSize: legendFontPx }">{{ domainMax.toFixed(1) }} °C</div>
         <svg class="legend-bar" :width="legendBarW" :height="legendBarH" viewBox="0 0 16 180" preserveAspectRatio="none">
           <defs>
             <linearGradient :id="legendId" x1="0" y1="0" x2="0" y2="1">
-              <stop v-for="i in 101" :key="i" :offset="(i-1)/100" :stop-color="colorScale(legendValue(i-1))" />
+              <stop v-for="i in 101"
+                    :key="i"
+                    :offset="(i-1)/100"
+                    :stop-color="colorFromValue( legendValue(i-1) )" />
             </linearGradient>
           </defs>
           <rect x="0" y="0" width="16" height="180" :fill="`url(#${legendId})`" rx="2" />
@@ -218,8 +239,24 @@ function fillFor(f) {
 </template>
 
 <style scoped>
-.map-wrap { position: relative; width: 100%; height: 100%; }
-.map-svg  { width: 100%; height: 100%; display: block; stroke: none; stroke-width: 0; }
+.map-wrap, .chart-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;     /* oder 16/9 für Linien; wähle, was bei dir passt */
+  /* Fallback für alte Browser, wenn aspect-ratio fehlt: */
+  height: auto;
+  min-height: 240px;       /* schützt kleine Geräte */
+}
+
+.map-svg, .chart-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.map-wrap, .chart-wrap {
+  touch-action: pan-y;   /* horizontales Panning bleibt bei Scrubber/Drag möglich */
+}
 
 .hud { position: absolute; inset: 0; pointer-events: none; }
 
@@ -242,4 +279,8 @@ function fillFor(f) {
 
 .legend-bar{ display:block; }
 .legend-label{ line-height:1; color:#000; }
+
+@media (max-width: 480px) {
+  .legend-label{ font-size: 10px; }
+}
 </style>

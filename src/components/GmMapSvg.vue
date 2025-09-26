@@ -51,7 +51,7 @@ const variationByKey = ref(new Map())
 const colorScale   = ref(null)
 const domainMin    = ref(0)
 const domainMax    = ref(1)
-const NO_DATA = '#b0b0b0'
+const NO_DATA = '#9e9e9e'
 
 /* ===== UI-Skalierung ===== */
 const internalScale = ref(1)
@@ -161,12 +161,31 @@ const nameAlias = {}
 /* ===== Farbpalette + Interpolator ===== */
 const PALETTE = [
   "#0e2741", "#153d6a", "#1f5a92", "#2f79af", "#5497c0",
-  "#80b4cf", "#b3cfdd", "#c9dbe6", "#dfe6ef", "#e8d6bf",
-  "#efb884", "#e47f57", "#de6d4d", "#d35245", "#c83f3e",
-  "#a71f3a", "#6f0b25"
+  "#80b4cf", "#b3cfdd", "#c9dbe6", "#d9e2ea", "#f0f1f2", 
+  "#e3d6c8", "#e8d6bf", "#efb884", "#e47f57", "#de6d4d", 
+  "#d35245", "#c83f3e", "#a71f3a", "#6f0b25"
 ]
 const interpolateBase = d3.interpolateLch || d3.interpolateLab
 const interpolateCustom = d3.piecewise(interpolateBase, PALETTE)
+
+// Perception-friendly interpolator over full palette
+const interpPalette   = d3.piecewise(interpolateBase, PALETTE)
+
+// Map value v to t in [0..1] with 0 exactly in the middle
+function tFromValue(v, minV, maxV){
+  if (!Number.isFinite(v)) return 0.5
+  if (v >= 0){
+    const x = Math.min(v / Math.max(1e-9, maxV), 1)
+    return 0.5 + 0.5 * x
+  } else {
+    const x = Math.min((-v) / Math.max(1e-9, -minV), 1)
+    return 0.5 - 0.5 * x
+  }
+}
+function colorFromValue(v){
+  return interpPalette( tFromValue(v, domainMin.value, domainMax.value) )
+}
+
 
 /* Laden */
 let ro
@@ -185,9 +204,10 @@ onMounted(async () => {
   const rows = raw.filter(Boolean)
 
   const featsAll = (geo?.features ?? [])
-  const feats = featsAll.filter(f =>
-    f?.geometry?.type === 'Polygon' || f?.geometry?.type === 'MultiPolygon'
-  )
+  const feats = featsAll.filter(f => {
+  const t = f?.geometry?.type
+  return t === 'Polygon' || t === 'MultiPolygon'
+})
 
   const fc = { type:'FeatureCollection', features:feats }
   const b  = d3.geoBounds(fc)
@@ -207,11 +227,13 @@ onMounted(async () => {
 
   const vals = Array.from(variationByKey.value.values()).filter(v => v!=null && !isNaN(v))
   const ext = d3.extent(vals)
-  domainMin.value = ext[0]; domainMax.value = ext[1]
 
-  colorScale.value = d3.scaleSequential(interpolateCustom)
-    .domain(ext)
-    .clamp(true)
+  const MIN_BLUE = -1
+  domainMin.value = Math.min(MIN_BLUE, 0, ext[0] ?? 0)
+  domainMax.value = Math.max(0,        ext[1] ?? 0)
+
+  // Diverging, value-based mapping (0 = white)
+  colorScale.value = null
 
   const P=[], fByKey=new Map(), nByKey=new Map()
   for (const f of feats){
@@ -277,9 +299,9 @@ function onDocumentClick(e){
   if (!root) return
   const inSvg    = !!svgEl.value && (svgEl.value === e.target || svgEl.value.contains(e.target))
   const inSearch = !!searchWrapEl.value && searchWrapEl.value.contains(e.target)
+  const inHud    = !!hudEl.value && hudEl.value.contains(e.target)   // <-- FIX: definieren!
   if (!inSearch) closeSearch()
   if (inHud) return
-  if (hudEl.value && hudEl.value.contains(e.target) && inSearch) return
   if (!root.contains(e.target)) {
     if (isExpanded.value) closeExpanded(); else clearSelection()
     return
@@ -298,7 +320,7 @@ function onKeydown(e){
   }
 }
 
-/* ===== Seen erkennen (wie in ChMapSvg) ===== */
+/* ===== Seen erkennen ===== */
 function isLakeFeature(f){
   const p = f?.properties || {}
   const gem = +p.GEM_FLAECH || 0
@@ -311,7 +333,7 @@ function isLakeFeature(f){
 function fillForPath(p){
   if (isLakeFeature(p.f)) return '#ffffff'   // Seen: weiss
   const v = variationByKey.value.get(p.key)
-  return Number.isFinite(v) ? colorScale.value(v) : NO_DATA
+  return Number.isFinite(v) ? colorFromValue(v) : NO_DATA
 }
 
 /* Tooltip/Hover */
@@ -488,7 +510,7 @@ function closeSearch(){
         <svg class="legend-bar" :width="legendBarW" :height="legendBarH" viewBox="0 0 16 180" preserveAspectRatio="none">
           <defs>
             <linearGradient :id="legendId" x1="0" y1="0" x2="0" y2="1">
-              <stop v-for="i in 101" :key="i" :offset="(i-1)/100" :stop-color="colorScale(legendValue(i-1))" />
+              <stop v-for="i in 101" :key="i" :offset="(i-1)/100" :stop-color="colorFromValue(legendValue(i-1))" />
             </linearGradient>
           </defs>
           <rect x="0" y="0" width="16" height="180" :fill="`url(#${legendId})`" rx="2" />

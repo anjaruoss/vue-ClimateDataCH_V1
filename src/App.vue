@@ -3,8 +3,8 @@ import { ref, computed, watch, nextTick } from "vue"
 import * as d3 from 'd3'
 import ScrollProgress from "./components/ScrollProgress.vue"
 import ChMapSvg from "./components/ChMapSvg.vue"
-import ZermattSvg from "./components/ZermattSvg.vue"
-import BiereSvg from "./components/BiereSvg.vue"
+import SaasFeeSvg from "./components/SaasFeeSvg.vue"
+import BernSvg from "./components/BernSvg.vue"
 import GmMapSvg from "./components/GmMapSvg.vue"
 import GmLinieSvg from "./components/GmLinieSvg.vue"
 
@@ -19,9 +19,9 @@ const endYear   = 2018
 const dataDir = "/data"
 const year    = ref(startYear)
 
-/*  Liniendiagramme Zermatt/Biere */
-const zermattYear = ref(startYear)
-const biereYear   = ref(startYear)
+/*  Liniendiagramme Saas-Fee/Bern */
+const saasfeeYear = ref(startYear)
+const bernYear   = ref(startYear)
 
 /* GmMapSvg */
 const yearGm    = ref(2018)
@@ -34,14 +34,14 @@ const gmLinieEl      = ref(null)       // Frame-Container des GmLinieSvg (für S
 
 /* Frame-Referenzen (Container-Elemente) */
 const mapEl     = ref(null)   // ChMapSvg Frame
-const zermattEl = ref(null)   // Zermatt Diagramm Frame
-const biereEl   = ref(null)   // Bière Diagramm Frame
+const saasfeeEl = ref(null)   // Saas-Fee Diagramm Frame
+const bernEl   = ref(null)   // Bière Diagramm Frame
 
 // Schlankes, einheitliches Scrubber-State-Handling
 const visualizations = [
   { key: 'map',     ref: mapEl,     year },            // nutzt gemeinsame Grenzen
-  { key: 'zermatt', ref: zermattEl, year: zermattYear },
-  { key: 'biere',   ref: biereEl,   year: biereYear   },
+  { key: 'saasfee', ref: saasfeeEl, year: saasfeeYear },
+  { key: 'bern',   ref: bernEl,   year: bernYear   },
   // dynamischees Linien-Diagramm für die ausgewählte Gemeinde
   { key: 'gmline',  ref: gmLinieEl, year: gmLinieYear },
 ]
@@ -143,22 +143,23 @@ const contentTitleDy = computed(() => 0)
               <p> Warum steigt die Temperatur in manchen Gemeinden schneller als in anderen? Mehrere Faktoren spielen zusammen: Hohe Bevölkerungsdichte und intensive Bodennutzung führen oft zu einem Wärmeinseleffekt. Gleichzeitig sind Bergregionen stark betroffen, wo steigende Temperaturen zu weniger Schneefall und auftauendem Permafrost führen.</p>
 
               <h3>Zwei Gemeinden, zwei Geschichten</h3>
-              <p> Ein Beispiel dafür ist Zermatt. Im beliebten Walliser Tourismusort am Fusse des Matterhorns ist die durchschnittliche Jahrestemperatur von <strong> −3.9 °C (1971) auf −2.5 °C (2018) </strong> gestiegen — um <strong> rund 1.4 °C</strong>.</p>
+              <p> Ein Beispiel dafür ist Saas-Fee. Im beliebten Walliser Tourismusort ist die durchschnittliche Jahrestemperatur von <strong> −3.8 °C (1971) auf 0.1 °C (2018) </strong> gestiegen — um <strong> rund 3.9 °C</strong>.</p>
 
-              <!-- Liniendiagramm Zermatt mit Scroll -->
-              <div class="linien-frame" ref="zermattEl" tabindex="0" style="outline:none;">
-                <ZermattSvg :year="zermattYear" />
+              <!-- Liniendiagramm Saas-Fee mit Scroll -->
+              <div class="linien-frame" ref="saasfeeEl" tabindex="0" style="outline:none;">
+                <SaasFeeSvg :year="saasfeeYear" />
               </div>
 
-              <p> Im Gegensatz dazu steht die Gemeinde Bière im Kanton Waadt, wo sich die mittlere Jahrestemperatur im selben Zeitraum von <strong> 9.2 °C auf 10.1 °C </strong> erhöhte — ein Anstieg um <strong>rund 1.0 °C </strong>.</p>
-
+              <p> Fast genauso stark legte Bern im selben Zeitraum zu: von <strong> 7.3 °C auf 10.4 °C </strong> — ein Anstieg um <strong>rund 3.1 °C </strong>. 
+              Hier dürften neben der allgemeinen Erwärmung auch städtebauliche Effekte eine Rolle spielen.              
+            </p>
               <!-- Liniendiagramm Bière mit Scroll -->
-              <div class="linien-frame" ref="biereEl" tabindex="0" style="outline:none;">
-                <BiereSvg :year="biereYear" />
+              <div class="linien-frame" ref="bernEl" tabindex="0" style="outline:none;">
+                <BernSvg :year="bernYear" />
               </div>
 
               <div class="bildlegende">
-                Die Liniendiagramme zeigen die durchschnittlichen Jahrestemperaturen der beiden Gemeinden Zermatt und Bière seit 1971.
+                Die Liniendiagramme zeigen die durchschnittlichen Jahrestemperaturen der beiden Gemeinden Saas-Fee und Bern seit 1971.
                 <a href="https://cds.climate.copernicus.eu/datasets/reanalysis-uerra-europe-single-levels?tab=overview" target="_blank" rel="noopener" style="font-style: italic;">Quelle: UERRA-Regionalreanalyse</a>
               </div>
 
@@ -374,15 +375,13 @@ h3{ font-size: clamp(16px, 2.1vw, 22px); font-weight: 700; }
 }
 
 /* Karten-Frames */
-.map-frame{
+.map-frame, .linien-frame {
+  position: relative;
   width: 100%;
-  aspect-ratio: 1200 / 740;
-  border-radius: 10px;
-  overflow: hidden;
-  background: #fff;
-  margin-bottom: var(--s-3);
-  margin-top: var(--s-3);
+  height: auto;
 }
+.map-frame  { aspect-ratio: 4 / 3;  min-height: 260px; }
+.linien-frame { aspect-ratio: 16 / 9; min-height: 220px; }
 
 /* ChMap-Frame (separat, weil ohne overflow hidden) */
 .svg-frame{

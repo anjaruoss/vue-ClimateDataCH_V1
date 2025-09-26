@@ -105,6 +105,8 @@ const barStyle = computed(() => ({
 }
 .sp-fixed.shown { display: block; }
 
+.scroll-progress { touch-action: pan-y; }
+
 /* Track + Bar */
 .sp-track {
   height: var(--sp-h);
@@ -116,6 +118,6 @@ const barStyle = computed(() => ({
   background: var(--sp-color);
   transform-origin: 0 50%;
   transform: scaleX(0);
-  transition: transform 80ms linear; /* smooth aber reaktiv */
+  transition: transform 80ms linear;
 }
 </style>

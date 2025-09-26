@@ -53,7 +53,7 @@ const ready = computed(() => data.value.length > 1)
 const norm = (s) => (s || '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
 
 onMounted(async () => {
-  // Robuster Parser: 0 bleibt 0, leere/ungültige → null
+  // Robuster Parser: 0 bleibt 0, leere/ungültige → null
   const csv = await d3.csv(`${props.dataDir}/lau_lvl_data_temperatures_ch.csv`, d => {
     if (d.CNTR_CODE !== 'CH') return null
     const v = d.avg_year === "" || d.avg_year == null ? null : +d.avg_year
@@ -63,7 +63,7 @@ onMounted(async () => {
 
   data.value = csv
     .filter(d =>
-      d.LAU_LABEL === 'Zermatt' &&
+      d.LAU_LABEL === 'Saas-Fee' &&
       d.year >= 1971 &&
       d.year <= 2018 &&
       d.avg_year != null
@@ -132,12 +132,12 @@ function cardinalSplinePath(points, tension = 0.15) {
 
 /* ===== Gemeinsame Domain für die Farbe ===== */
 const globalExtent = computed(() => {
-  if (!rows.value?.length) return [0, 1]
+  if (!rows.value?.length) return [-1, 1]
   const vals = rows.value
     .filter(d => d.avg_year != null && d.year >= 1971 && d.year <= 2018)
     .map(d => d.avg_year)
-  const ext = d3.extent(vals)
-  return (ext[0] == null) ? [0, 1] : ext
+  const ext = d3.extent(vals) // [min, max]
+  return [Math.min(ext[0], 0), Math.max(ext[1], 0)]
 })
 
 /* ===== Farb-Logik ===== */
@@ -145,20 +145,30 @@ const globalExtent = computed(() => {
 /* Eigene Farbpalette */
 const PALETTE = [
   "#0e2741", "#153d6a", "#1f5a92", "#2f79af", "#5497c0",
-  "#80b4cf", "#b3cfdd", "#c9dbe6", "#dfe6ef", "#e8d6bf",
-  "#efb884", "#e47f57", "#de6d4d", "#d35245", "#c83f3e",
-  "#a71f3a", "#6f0b25"
+  "#80b4cf", "#b3cfdd", "#c9dbe6", "#d9e2ea", "#f0f1f2",
+  "#e3d6c8", "#e8d6bf", "#efb884", "#e47f57", "#de6d4d",
+  "#d35245", "#c83f3e", "#a71f3a", "#6f0b25"
 ]
-
+// LCH-Interpolation über die gesamte Palette (feine Übergänge)
 const interpolateBase = d3.interpolateLch || d3.interpolateLab
-const interpolateCustom = d3.piecewise(interpolateBase, PALETTE)
+const interpPalette   = d3.piecewise(interpolateBase, PALETTE)
 
-/* Kontinuierliche Skala (geclamped), gemeinsame Domain */
-const colorScaleVal = computed(() =>
-  d3.scaleSequential(interpolateCustom)
-    .domain(globalExtent.value)  // gleiche Domain wie die Karte
-    .clamp(true)
-)
+// Wert v (°C) → t ∈ [0..1] mit 0 °C exakt in der Mitte
+function tFromValue(v, minV, maxV){
+  if (!Number.isFinite(v)) return 0.5
+  if (v >= 0){
+    const x = Math.min(v / Math.max(1e-9, maxV), 1)
+    return 0.5 + 0.5 * x
+  } else {
+    const x = Math.min((-v) / Math.max(1e-9, -minV), 1)
+    return 0.5 - 0.5 * x
+  }
+}
+// Endgültige Farb-Funktion (wird überall verwendet)
+function colorFromValue(v){
+  const [minV, maxV] = globalExtent.value
+  return interpPalette( tFromValue(v, minV, maxV) )
+}
 
 /* ===== Segmente (für Gradients) ===== */
 const segGradUID = `seg-${Math.random().toString(36).slice(2)}`
@@ -197,7 +207,7 @@ const cur = computed(() => {
   return best
 })
 const curPt = computed(() => (cur.value ? [xScale(cur.value.year), yScale(cur.value.avg)] : null))
-const curColor = computed(() => cur.value ? colorScaleVal.value(cur.value.avg) : '#888')
+const curColor = computed(() => cur.value ? colorFromValue(cur.value.avg) : '#888')
 
 /* ===== Helper ===== */
 function formatTemp(v, digits = 1) {
@@ -243,8 +253,8 @@ function formatTemp(v, digits = 1) {
           gradientUnits="userSpaceOnUse"
           :x1="s.x1" :y1="s.y1" :x2="s.x2" :y2="s.y2"
         >
-          <stop offset="0" :stop-color="colorScaleVal(s.a.avg)" />
-          <stop offset="1" :stop-color="colorScaleVal(s.b.avg)" />
+          <stop offset="0" :stop-color="colorFromValue(s.a.avg)" />
+          <stop offset="1" :stop-color="colorFromValue(s.b.avg)" />
         </linearGradient>
       </defs>
 
@@ -293,7 +303,7 @@ function formatTemp(v, digits = 1) {
       class="linien-title"
       :style="{ left: leftPx + 'px', top: (topPx + hudOffsetPx + 40*scale) + 'px'}"
     >
-      Zermatt · 1971–2018
+      Saas-Fee · 1971–2018
     </div>
     <div
       class="linien-subtitle"
@@ -305,7 +315,14 @@ function formatTemp(v, digits = 1) {
 </template>
 
 <style scoped>
-.chart-wrap { position: relative; width: 100%; height: 100%; }
+.chart-wrap { 
+  position: relative; 
+  width: 100%; 
+  aspect-ratio: 16 / 9;  /* Linien eher breiter */
+  height: auto; 
+  min-height: 220px; 
+  touch-action: pan-y;
+}
 .chart-svg  { width: 100%; height: 100%; display: block; }
 
 .linien-title {
